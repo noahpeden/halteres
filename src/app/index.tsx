@@ -12,7 +12,7 @@ export default function HomeScreen() {
         <S.Title testID="home-screen-title">🏠</S.Title>
         <S.Text testID="home-screen-text">Go to app/index.tsx to edit</S.Text>
 
-        <LinkButton href="/second" text="Go To Second Screen" />
+        <LinkButton href="/gym" text="Configure Gym" />
       </S.Content>
     </ScreenLayout>
   )
