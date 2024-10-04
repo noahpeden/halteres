@@ -1,41 +1,41 @@
-import styled from 'styled-components/native'
+import React from 'react'
 import { Link } from 'expo-router'
 import { openURL } from 'expo-linking'
+import { Button, Text, styled } from 'tamagui'
 
 interface Props {
   href: string
   text: string
 }
 
-export default function LinkButton({ href, text }: Props) {
-  return href.substring(0, 1) === '/' ? (
-    <S.InternalLink testID="link-button" href={href}>
-      <S.LinkText testID="link-button-text">{text}</S.LinkText>
-    </S.InternalLink>
-  ) : (
-    <S.ExternalLink testID="link-button" onPress={() => openURL(href)}>
-      <S.LinkText testID="link-button-text">{text}</S.LinkText>
-    </S.ExternalLink>
-  )
-}
+const StyledButton = styled(Button, {
+  backgroundColor: 'transparent',
+  borderColor: '$highlight',
+  borderWidth: 1,
+  borderRadius: '$2',
+  paddingVertical: '$2',
+  paddingHorizontal: '$3'
+})
 
-const S = {
-  ExternalLink: styled.TouchableOpacity`
-    padding: ${(p) => p.theme.size(10, 'px')} ${(p) => p.theme.size(20, 'px')};
-    border-color: ${(p) => p.theme.highlight};
-    border-width: ${(p) => p.theme.size(1, 'px')};
-    border-radius: ${(p) => p.theme.size(5, 'px')};
-    background-color: transparent;
-  `,
-  InternalLink: styled(Link)`
-    padding: ${(p) => p.theme.size(10, 'px')} ${(p) => p.theme.size(20, 'px')};
-    border-color: ${(p) => p.theme.highlight};
-    border-width: ${(p) => p.theme.size(1, 'px')};
-    border-radius: ${(p) => p.theme.size(5, 'px')};
-    background-color: transparent;
-  `,
-  LinkText: styled.Text`
-    color: ${(p) => p.theme.highlight};
-    font-weight: 600;
-  `
+const StyledText = styled(Text, {
+  color: '$highlight',
+  fontWeight: '600'
+})
+
+export default function LinkButton({ href, text }: Props) {
+  if (href.startsWith('/')) {
+    return (
+      <StyledButton asChild>
+        <Link href={href} testID="link-button">
+          <StyledText testID="link-button-text">{text}</StyledText>
+        </Link>
+      </StyledButton>
+    )
+  } else {
+    return (
+      <StyledButton testID="link-button" onPress={() => openURL(href)}>
+        <StyledText testID="link-button-text">{text}</StyledText>
+      </StyledButton>
+    )
+  }
 }

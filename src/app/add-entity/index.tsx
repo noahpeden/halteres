@@ -1,10 +1,7 @@
-// src/app/add-entity.tsx
-
 import React, { useState } from 'react'
-import { Alert, View } from 'react-native'
+import { Alert } from 'react-native'
 import { useRouter } from 'expo-router'
-import styled from 'styled-components/native'
-import { colors } from 'src/theme/colors'
+import { YStack, XStack, Text, Input, Button, View, RadioGroup, Label, H1 } from 'tamagui'
 import { useEntities } from 'src/hooks/useEntities'
 import { useAuth } from 'src/contexts/AuthContext'
 
@@ -39,90 +36,45 @@ const AddEntity = () => {
   }
 
   return (
-    <Container>
-      <Title>Add New Entity</Title>
-      <Input placeholder="Entity Name" value={name} onChangeText={setName} />
-      <RadioGroup>
-        <RadioButton onPress={() => setType('CLIENT')} isSelected={type === 'CLIENT'}>
-          <RadioButtonInner isSelected={type === 'CLIENT'} />
-        </RadioButton>
-        <RadioLabel>Client</RadioLabel>
-        <RadioButton onPress={() => setType('CLASS')} isSelected={type === 'CLASS'}>
-          <RadioButtonInner isSelected={type === 'CLASS'} />
-        </RadioButton>
-        <RadioLabel>Class</RadioLabel>
+    <YStack flex={1} padding="$4" backgroundColor="$background">
+      <H1 color="$primary" marginBottom="$4" textAlign="center">
+        Add New Entity
+      </H1>
+      <Input
+        placeholder="Entity Name"
+        value={name}
+        onChangeText={setName}
+        backgroundColor="$background"
+        padding="$3"
+        borderRadius={2}
+        marginBottom="$3"
+        fontSize="$4"
+      />
+      <RadioGroup value={type} onValueChange={(value) => setType(value as EntityType)} marginBottom="$4">
+        <XStack alignItems="center">
+          <RadioGroup.Item value="CLIENT" id="client">
+            <RadioGroup.Indicator />
+          </RadioGroup.Item>
+          <Label htmlFor="client" marginLeft="$2">
+            Client
+          </Label>
+        </XStack>
+        <XStack alignItems="center" marginLeft="$4">
+          <RadioGroup.Item value="CLASS" id="class">
+            <RadioGroup.Indicator />
+          </RadioGroup.Item>
+          <Label htmlFor="class" marginLeft="$2">
+            Class
+          </Label>
+        </XStack>
       </RadioGroup>
-      <SubmitButton onPress={handleSubmit}>
-        <ButtonText>Add Entity</ButtonText>
-      </SubmitButton>
-    </Container>
+      <Button backgroundColor="$primary" onPress={handleSubmit} padding="$3" borderRadius={2}>
+        <Text color="$background" fontWeight="bold" fontSize="$4">
+          Add Entity
+        </Text>
+      </Button>
+    </YStack>
   )
 }
-
-// Styled Components
-const Container = styled.View`
-  flex: 1;
-  padding: 20px;
-  background-color: ${colors.gallery};
-`
-
-const Title = styled.Text`
-  font-size: 24px;
-  font-weight: bold;
-  color: ${colors.smartBlue.default};
-  margin-bottom: 20px;
-  text-align: center;
-`
-
-const Input = styled.TextInput`
-  background-color: ${colors.white};
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 15px;
-  font-size: 16px;
-`
-
-const RadioGroup = styled.View`
-  flex-direction: row;
-  align-items: center;
-  margin-bottom: 20px;
-`
-
-const RadioButton = styled.TouchableOpacity<{ isSelected: boolean }>`
-  width: 24px;
-  height: 24px;
-  border-radius: 12px;
-  border-width: 2px;
-  border-color: ${(props) => (props.isSelected ? colors.smartBlue.default : colors.practicalGray.default)};
-  align-items: center;
-  justify-content: center;
-  margin-right: 8px;
-`
-
-const RadioButtonInner = styled.View<{ isSelected: boolean }>`
-  width: 12px;
-  height: 12px;
-  border-radius: 6px;
-  background-color: ${(props) => (props.isSelected ? colors.smartBlue.default : 'transparent')};
-`
-
-const RadioLabel = styled.Text`
-  font-size: 16px;
-  color: ${colors.black[1]};
-  margin-right: 20px;
-`
-
-const SubmitButton = styled.TouchableOpacity`
-  background-color: ${colors.smartBlue.default};
-  padding: 15px;
-  border-radius: 10px;
-  align-items: center;
-`
-
-const ButtonText = styled.Text`
-  color: ${colors.white};
-  font-weight: bold;
-  font-size: 18px;
-`
 
 export default AddEntity
