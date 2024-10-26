@@ -8,15 +8,14 @@ import Spinner from 'src/components/Spinner'
 import { useColorScheme } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { createTamagui, TamaguiProvider, YStack } from 'tamagui'
-import defaultConfig from '@tamagui/config/v3'
+import { TamaguiProvider } from 'tamagui'
+import tamaguiConfig from 'tamagui.config' // Ensure this points to your Tamagui config file
 import '@tamagui/core/reset.css'
 
-const config = createTamagui(defaultConfig)
-
 export default function AppLayout() {
-  const colorScheme = useColorScheme()
+  const colorScheme = useColorScheme() // Detect system color scheme (light/dark mode)
 
+  // Load custom fonts
   const [fontsLoaded] = useFonts({
     NunitoSans_300Light,
     NunitoSans_400Regular,
@@ -33,15 +32,15 @@ export default function AppLayout() {
   }
 
   return (
-    <TamaguiProvider config={config}>
-      {/* <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}> */}
-      <StatusBar style="light" />
-      <SafeAreaView style={{ flex: 1 }}>
-        <AuthProvider>
-          <Slot screenOptions={{ headerShown: false }} />
-        </AuthProvider>
-      </SafeAreaView>
-      {/* </NavThemeProvider> */}
+    <TamaguiProvider config={tamaguiConfig}>
+      <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+        <SafeAreaView style={{ flex: 1 }}>
+          <AuthProvider>
+            <Slot screenOptions={{ headerShown: false }} />
+          </AuthProvider>
+        </SafeAreaView>
+      </NavThemeProvider>
     </TamaguiProvider>
   )
 }

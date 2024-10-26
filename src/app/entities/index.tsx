@@ -6,8 +6,8 @@ import { Check, ChevronDown, ChevronUp } from '@tamagui/lucide-icons'
 import { router } from 'expo-router'
 
 const entityTypes = [
-  { name: 'CrossFit Class', value: 'crossfit_class' },
-  { name: 'Personal Training Client', value: 'personal_training' }
+  { name: 'CrossFit Class', value: 'CLASS' },
+  { name: 'Personal Training Client', value: 'CLIENT' }
 ]
 
 export default function EntitiesPage() {
@@ -15,14 +15,29 @@ export default function EntitiesPage() {
   const [newEntityName, setNewEntityName] = useState('')
   const [newEntityType, setNewEntityType] = useState('')
   const [loading, setLoading] = useState(false)
+  const [user, setUser] = useState(null)
 
   useEffect(() => {
-    fetchEntities()
+    checkUser()
   }, [])
 
+  async function checkUser() {
+    const {
+      data: { user: authUser }
+    } = await supabase.auth.getUser()
+    if (authUser) {
+      setUser(authUser)
+      fetchEntities()
+    } else {
+      Alert.alert('Authentication required', 'Please log in to view and manage entities')
+    }
+  }
+
   async function fetchEntities() {
+    if (!user) return
+
     setLoading(true)
-    const { data, error } = await supabase.from('entities').select('*').order('created_at', { ascending: false })
+    const { data, error } = await supabase.from('entities').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
 
     if (error) Alert.alert('Error fetching entities', error.message)
     else setEntities(data)
@@ -30,21 +45,46 @@ export default function EntitiesPage() {
   }
 
   async function createEntity() {
+    if (!user) {
+      Alert.alert('Authentication required', 'Please log in to create an entity')
+      return
+    }
+
     if (!newEntityName || !newEntityType) {
       Alert.alert('Please enter a name and select a type for the new entity')
       return
     }
 
     setLoading(true)
-    const { data, error } = await supabase.from('entities').insert({ name: newEntityName, type: newEntityType }).single()
+    const { data, error } = await supabase
+      .from('entities')
+      .insert({
+        name: newEntityName,
+        type: newEntityType,
+        user_id: user.id,
+        details: {}, // Add an empty JSONB object for the details column
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .single()
 
-    if (error) Alert.alert('Error creating entity', error.message)
-    else {
+    if (error) {
+      console.error('Error creating entity:', error)
+      Alert.alert('Error creating entity', error.message)
+    } else {
       setNewEntityName('')
       setNewEntityType('')
       fetchEntities()
     }
     setLoading(false)
+  }
+
+  if (!user) {
+    return (
+      <YStack padding="$4">
+        <Text>Please log in to view and manage entities.</Text>
+      </YStack>
+    )
   }
 
   return (
