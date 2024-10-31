@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
-import { Alert } from 'react-native'
+import { Alert, View, Text, TextInput, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
-import { YStack, XStack, Text, Input, Button, View, RadioGroup, Label, H1 } from 'tamagui'
 import { useEntities } from 'src/hooks/useEntities'
 import { useAuth } from 'src/contexts/AuthContext'
 
@@ -36,44 +35,25 @@ const AddEntity = () => {
   }
 
   return (
-    <YStack flex={1} padding="$4" backgroundColor="$background">
-      <H1 color="$primary" marginBottom="$4" textAlign="center">
-        Add New Entity
-      </H1>
-      <Input
-        placeholder="Entity Name"
-        value={name}
-        onChangeText={setName}
-        backgroundColor="$background"
-        padding="$3"
-        borderRadius={2}
-        marginBottom="$3"
-        fontSize="$4"
-      />
-      <RadioGroup value={type} onValueChange={(value) => setType(value as EntityType)} marginBottom="$4">
-        <XStack alignItems="center">
-          <RadioGroup.Item value="CLIENT" id="client">
-            <RadioGroup.Indicator />
-          </RadioGroup.Item>
-          <Label htmlFor="client" marginLeft="$2">
-            Client
-          </Label>
-        </XStack>
-        <XStack alignItems="center" marginLeft="$4">
-          <RadioGroup.Item value="CLASS" id="class">
-            <RadioGroup.Indicator />
-          </RadioGroup.Item>
-          <Label htmlFor="class" marginLeft="$2">
-            Class
-          </Label>
-        </XStack>
-      </RadioGroup>
-      <Button backgroundColor="$primary" onPress={handleSubmit} padding="$3" borderRadius={2}>
-        <Text color="$background" fontWeight="bold" fontSize="$4">
-          Add Entity
-        </Text>
-      </Button>
-    </YStack>
+    <View className="flex-1 p-4 bg-white">
+      <Text className="text-3xl font-bold text-blue-600 mb-4 text-center">Add New Entity</Text>
+      <TextInput placeholder="Entity Name" value={name} onChangeText={setName} className="bg-gray-100 p-3 rounded-md mb-3 text-lg" />
+      <View className="flex-row mb-4">
+        <TouchableOpacity
+          onPress={() => setType('CLIENT')}
+          className={`flex-row items-center mr-4 ${type === 'CLIENT' ? 'opacity-100' : 'opacity-50'}`}>
+          <View className={`w-5 h-5 rounded-full border-2 ${type === 'CLIENT' ? 'bg-blue-600 border-blue-600' : 'border-gray-400'}`} />
+          <Text className="ml-2">Client</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setType('CLASS')} className={`flex-row items-center ${type === 'CLASS' ? 'opacity-100' : 'opacity-50'}`}>
+          <View className={`w-5 h-5 rounded-full border-2 ${type === 'CLASS' ? 'bg-blue-600 border-blue-600' : 'border-gray-400'}`} />
+          <Text className="ml-2">Class</Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity onPress={handleSubmit} className="bg-blue-600 p-3 rounded-md">
+        <Text className="text-white font-bold text-lg text-center">Add Entity</Text>
+      </TouchableOpacity>
+    </View>
   )
 }
 

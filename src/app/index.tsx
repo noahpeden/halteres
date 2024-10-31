@@ -1,25 +1,13 @@
 import React from 'react'
 import { useRouter } from 'expo-router'
 import { useAuth } from 'src/contexts/AuthContext'
-import { YStack, XStack, Button as TamaguiButton, H1, Text, Image, ScrollView, Theme, styled } from 'tamagui'
-import { useWindowDimensions } from 'react-native'
+import { View, Text, Image, ScrollView, useWindowDimensions } from 'react-native'
 import LOGO_IMG from '../assets/images/logo.png'
-import PROGRAM_GENERATION from '../assets/images/program-generation.jpeg'
-
-const CustomButton = styled(TamaguiButton, {
-  width: 179,
-  height: 65,
-  paddingVertical: 10,
-  paddingHorizontal: 30,
-  gap: 0,
-  borderRadius: 14,
-  borderBottomRightRadius: 0,
-  borderBottomLeftRadius: 0,
-  opacity: 1 // If you mean visibility, otherwise set it to 0.5 or other values
-})
+import SCREENS from 'src/assets/images/screens.png'
+import Button from 'src/app/ui/Button'
 
 const HomePage = () => {
-  // const { session } = useAuth()
+  const { session } = useAuth()
   const router = useRouter()
   const { height: windowHeight } = useWindowDimensions()
 
@@ -37,77 +25,43 @@ const HomePage = () => {
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-      <Theme name="light">
-        <YStack flex={1} backgroundColor="$gallery" minHeight={windowHeight}>
-          {/* Header */}
-          <XStack
-            paddingHorizontal="$4"
-            paddingVertical="$2"
-            justifyContent="space-between"
-            alignItems="center"
-            backgroundColor="$white"
-            borderBottomColor="$black4"
-            borderBottomWidth={1}>
-            <Image source={LOGO_IMG} resizeMode="contain" width={150} height={40} />
-            <CustomButton
-              size="$4"
-              backgroundColor="$smartBlue3"
-              pressStyle={{ backgroundColor: '$smartBlue1' }}
-              onPress={() => router.push('/login')}>
-              <Text color="$smartBlue" fontWeight="bold">
-                Login
-              </Text>
-            </CustomButton>
-          </XStack>
+      <View className="flex-1 bg-background min-h-screen">
+        {/* Header */}
+        <View className="flex-row px-4 py-2 justify-between items-center bg-white border-b border-[rgba(0,0,0,0.38)]">
+          <Image source={LOGO_IMG} resizeMode="contain" className="w-[150px] h-[40px]" />
+          <Button variant="login" size="small" onPress={() => router.push('/login')}>
+            Login
+          </Button>
+        </View>
 
-          {/* Hero Section */}
-          <YStack flex={1} paddingHorizontal="$4" paddingVertical="$6" gap="$4" alignItems="center" backgroundColor="$pampas">
-            <YStack gap="$4" maxWidth={800} alignItems="center">
-              <H1 textAlign="center" fontSize="$10" lineHeight="$10" color="$black1">
-                Elevate Your Fitness Programming
-              </H1>
-              <H1 textAlign="center" fontSize="$10" lineHeight="$10" color="$smartBlue">
-                with HalteresAI
-              </H1>
+        {/* Hero Section */}
+        <View className="flex-1 px-4 py-6 items-center bg-background-secondary">
+          <View className="gap-4 max-w-[800px] items-center">
+            <View className="gap-4 text-center">
+              <Text className="text-4xl text-center font-bold text-text-primary">Elevate Your Fitness Programming</Text>
+              <Text className="text-4xl text-center font-bold text-primary">with HalteresAI</Text>
+            </View>
 
-              <Text textAlign="center" color="$black2" fontSize="$5" maxWidth={600}>
-                AI-Powered, Personalized Workouts for CrossFit Gyms, Coaches, and Health Professionals
-              </Text>
+            <Text className="text-lg text-center text-text-secondary max-w-[600px]">
+              AI-Powered, Personalized Workouts for CrossFit Gyms, Coaches, and Health Professionals
+            </Text>
 
-              <XStack gap="$4" marginTop="$4">
-                <CustomButton
-                  size="$6"
-                  backgroundColor="$helpfulOrange"
-                  pressStyle={{ backgroundColor: '$helpfulOrange1' }}
-                  onPress={handleGetStarted}>
-                  <Text color="$white" fontSize="$5" fontWeight="bold">
-                    Get Started
-                  </Text>
-                </CustomButton>
-                <CustomButton size="$6" backgroundColor="$smartBlue3" pressStyle={{ backgroundColor: '$smartBlue1' }} onPress={handleLearnMore}>
-                  <Text color="$smartBlue" fontSize="$5" fontWeight="bold">
-                    Learn More
-                  </Text>
-                </CustomButton>
-              </XStack>
-            </YStack>
+            <View className="gap-4 mt-4">
+              <Button variant="primary" size="large" onPress={handleGetStarted}>
+                Get Started
+              </Button>
+              <Button variant="secondary" size="large" onPress={handleLearnMore}>
+                Learn More
+              </Button>
+            </View>
+          </View>
 
-            {/* Dashboard Preview */}
-            <YStack
-              marginTop="$6"
-              width="100%"
-              maxWidth={1000}
-              backgroundColor="$white"
-              borderRadius="$4"
-              shadowColor="$black2"
-              shadowOffset={{ width: 0, height: 4 }}
-              shadowOpacity={0.1}
-              shadowRadius={12}>
-              <Image source={PROGRAM_GENERATION} width="100%" height={500} borderRadius="$4" opacity={0.9} resizeMode="cover" />
-            </YStack>
-          </YStack>
-        </YStack>
-      </Theme>
+          {/* Dashboard Preview */}
+          <View className="mt-6 w-full max-w-[1000px] bg-white rounded-lg shadow-lg">
+            <Image source={SCREENS} className="w-full h-[500px] rounded-lg opacity-90" resizeMode="cover" />
+          </View>
+        </View>
+      </View>
     </ScrollView>
   )
 }

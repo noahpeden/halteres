@@ -12,17 +12,18 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.haytherecharlie.exporoutertypescript"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/app-icon.png",
+        "foregroundImage": "./src/assets/images/logo.png",
         "backgroundColor": "#222"
       },
       "package": "com.haytherecharlie.exporoutertypescript"
     },
     "web": {
-      "favicon": "./src/assets/images/app-icon.png",
+      "favicon": "./src/assets/images/logo.png",
       "bundler": "metro"
     },
     "plugins": ["expo-router", "expo-font"],

@@ -1,41 +1,33 @@
 import React from 'react'
 import { Link } from 'expo-router'
 import { openURL } from 'expo-linking'
-import { Button, Text, styled } from 'tamagui'
-
+import { TouchableOpacity, Text } from 'react-native'
 interface Props {
   href: string
   text: string
 }
 
-const StyledButton = styled(Button, {
-  backgroundColor: 'transparent',
-  borderColor: '$highlight',
-  borderWidth: 1,
-  borderRadius: '$2',
-  paddingVertical: '$2',
-  paddingHorizontal: '$3'
-})
-
-const StyledText = styled(Text, {
-  color: '$highlight',
-  fontWeight: '600'
-})
-
 export default function LinkButton({ href, text }: Props) {
+  const buttonClasses = 'bg-transparent border border-highlight rounded-md py-2 px-3'
+  const textClasses = 'text-highlight font-semibold'
+
   if (href.startsWith('/')) {
     return (
-      <StyledButton asChild>
-        <Link href={href} testID="link-button">
-          <StyledText testID="link-button-text">{text}</StyledText>
-        </Link>
-      </StyledButton>
+      <Link href={href} testID="link-button">
+        <TouchableOpacity className={buttonClasses}>
+          <Text className={textClasses} testID="link-button-text">
+            {text}
+          </Text>
+        </TouchableOpacity>
+      </Link>
     )
   } else {
     return (
-      <StyledButton testID="link-button" onPress={() => openURL(href)}>
-        <StyledText testID="link-button-text">{text}</StyledText>
-      </StyledButton>
+      <TouchableOpacity className={buttonClasses} testID="link-button" onPress={() => openURL(href)}>
+        <Text className={textClasses} testID="link-button-text">
+          {text}
+        </Text>
+      </TouchableOpacity>
     )
   }
 }

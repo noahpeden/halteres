@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Alert } from 'react-native'
+import { Alert, ScrollView, View, Text, TextInput, TouchableOpacity } from 'react-native'
 import { supabase } from '../../utils/supabase/client'
-import { YStack, XStack, Button, Input, Text, ScrollView, Select, Adapt, Sheet } from 'tamagui'
-import { Check, ChevronDown, ChevronUp } from '@tamagui/lucide-icons'
+import { Picker } from '@react-native-picker/picker'
 import { router } from 'expo-router'
 
 const entityTypes = [
@@ -81,77 +80,47 @@ export default function EntitiesPage() {
 
   if (!user) {
     return (
-      <YStack padding="$4">
+      <View className="p-4">
         <Text>Please log in to view and manage entities.</Text>
-      </YStack>
+      </View>
     )
   }
 
   return (
-    <ScrollView>
-      <YStack padding="$4" gap="$4">
-        <Text fontSize="$6" fontWeight="bold">
-          Your Entities
-        </Text>
+    <ScrollView className="bg-white">
+      <View className="p-4 space-y-4">
+        <Text className="text-2xl font-bold">Your Entities</Text>
 
-        <XStack gap="$2">
-          <Input flex={1} placeholder="New entity name" value={newEntityName} onChangeText={setNewEntityName} />
-          <Select value={newEntityType} onValueChange={setNewEntityType}>
-            <Select.Trigger width={220} iconAfter={ChevronDown}>
-              <Select.Value placeholder="Select type" />
-            </Select.Trigger>
-
-            <Adapt when="sm" platform="touch">
-              <Sheet modal dismissOnSnapToBottom>
-                <Sheet.Frame>
-                  <Sheet.ScrollView>
-                    <Adapt.Contents />
-                  </Sheet.ScrollView>
-                </Sheet.Frame>
-                <Sheet.Overlay />
-              </Sheet>
-            </Adapt>
-
-            <Select.Content zIndex={200000}>
-              <Select.ScrollUpButton alignItems="center" justifyContent="center" height="$3">
-                <ChevronUp size={20} />
-              </Select.ScrollUpButton>
-
-              <Select.Viewport minWidth={200}>
-                <Select.Group>
-                  <Select.Label>Entity Types</Select.Label>
-                  {entityTypes.map((item, i) => (
-                    <Select.Item index={i} key={item.value} value={item.value}>
-                      <Select.ItemText>{item.name}</Select.ItemText>
-                      <Select.ItemIndicator marginLeft="auto">
-                        <Check size={16} />
-                      </Select.ItemIndicator>
-                    </Select.Item>
-                  ))}
-                </Select.Group>
-              </Select.Viewport>
-
-              <Select.ScrollDownButton alignItems="center" justifyContent="center" height="$3">
-                <ChevronDown size={20} />
-              </Select.ScrollDownButton>
-            </Select.Content>
-          </Select>
-          <Button onPress={createEntity} disabled={loading}>
-            Add
-          </Button>
-        </XStack>
-
+        <View className="flex-row space-x-2">
+          <TextInput
+            className="flex-1 border border-gray-300 rounded-md p-2"
+            placeholder="New entity name"
+            value={newEntityName}
+            onChangeText={setNewEntityName}
+          />
+          <Picker selectedValue={newEntityType} onValueChange={(itemValue) => setNewEntityType(itemValue)} style={{ width: 220 }}>
+            <Picker.Item label="Select type" value="" />
+            {entityTypes.map((item) => (
+              <Picker.Item key={item.value} label={item.name} value={item.value} />
+            ))}
+          </Picker>
+          <TouchableOpacity className={`bg-blue-500 p-2 rounded-md ${loading ? 'opacity-50' : ''}`} onPress={createEntity} disabled={loading}>
+            <Text className="text-white">Add</Text>
+          </TouchableOpacity>
+        </View>
         {entities.map((entity) => (
-          <XStack key={entity.id} justifyContent="space-between" alignItems="center">
+          <View key={entity.id} className="flex-row justify-between items-center">
             <Text>
               {entity.name} - {entity.type}
             </Text>
-            <Button onPress={() => router.push(`/entity/${entity.id}`)}>Manage</Button>
-          </XStack>
+            <TouchableOpacity className="bg-blue-500 p-2 rounded-md" onPress={() => router.push(`/entity/${entity.id}`)}>
+              <Text className="text-white">Manage</Text>
+            </TouchableOpacity>
+          </View>
         ))}
 
         {loading && <Text>Loading...</Text>}
-      </YStack>
+      </View>
     </ScrollView>
   )
 }
