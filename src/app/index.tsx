@@ -57,7 +57,7 @@ const HomePage = () => {
           </View>
 
           {/* Dashboard Preview */}
-          <View className="mt-6 w-full max-w-[1000px] bg-white rounded-lg shadow-lg">
+          <View className="mt-6 w-full max-w-[1000px] bg-background">
             <Image source={SCREENS} className="w-full h-[500px] rounded-lg opacity-90" resizeMode="cover" />
           </View>
         </View>

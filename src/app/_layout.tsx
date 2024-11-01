@@ -5,10 +5,11 @@ import { AuthProvider } from 'src/contexts/AuthContext'
 import { useFonts, NunitoSans_300Light, NunitoSans_400Regular, NunitoSans_600SemiBold, NunitoSans_700Bold } from '@expo-google-fonts/nunito-sans'
 import { Poppins_300Light, Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins'
 import Spinner from 'src/components/Spinner'
-import { useColorScheme } from 'react-native'
+import { useColorScheme, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import './global.css'
 import Theme from './ui/Theme'
+import { EntityProvider } from 'src/contexts/EntityContext'
 
 export default function AppLayout() {
   const colorScheme = useColorScheme() // Detect system color scheme (light/dark mode)
@@ -33,7 +34,11 @@ export default function AppLayout() {
     <SafeAreaView style={{ flex: 1 }}>
       <AuthProvider>
         <Theme>
-          <Slot screenOptions={{ headerShown: false }} />
+          <EntityProvider>
+            <View className="min-h-screen bg-background">
+              <Slot screenOptions={{ headerShown: false }} />
+            </View>
+          </EntityProvider>
         </Theme>
       </AuthProvider>
     </SafeAreaView>
