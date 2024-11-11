@@ -5,11 +5,12 @@ import { View, Text, Image, ScrollView, useWindowDimensions } from 'react-native
 import LOGO_IMG from '../assets/images/logo.png'
 import SCREENS from 'src/assets/images/screens.png'
 import Button from 'src/app/ui/Button'
+import { seedEntityData, useEntityContext } from 'src/contexts/EntityContext'
 
 const HomePage = () => {
   const { session } = useAuth()
   const router = useRouter()
-  const { height: windowHeight } = useWindowDimensions()
+  const { setEntityData } = useEntityContext()
 
   const handleGetStarted = () => {
     if (session) {
@@ -21,6 +22,19 @@ const HomePage = () => {
 
   const handleLearnMore = () => {
     router.push('/about')
+  }
+
+  const handleDemoClick = async () => {
+    // Seed the context with test data
+
+    // Navigate to program generation
+    if (session) {
+      setEntityData(seedEntityData)
+      router.push('/entities/ProgramOverview')
+    } else {
+      // If not logged in, you might want to create a demo session or require login
+      router.push('/login')
+    }
   }
 
   return (
@@ -47,6 +61,9 @@ const HomePage = () => {
             </Text>
 
             <View className="gap-4 mt-4">
+              <Button variant="secondary" size="small" onPress={handleDemoClick}>
+                Try Demo
+              </Button>
               <Button variant="primary" size="large" onPress={handleGetStarted}>
                 Get Started
               </Button>

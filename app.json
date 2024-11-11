@@ -10,7 +10,9 @@
       "image": "./src/assets/images/logo.png",
       "backgroundColor": "#222"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.haytherecharlie.exporoutertypescript"
@@ -26,10 +28,16 @@
       "favicon": "./src/assets/images/logo.png",
       "bundler": "metro"
     },
-    "plugins": ["expo-router", "expo-font"],
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "41f97bb0-2941-4c2b-b333-b8852b14137e"
       }
     }
   }
