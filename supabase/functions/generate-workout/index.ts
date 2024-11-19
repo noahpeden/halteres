@@ -81,15 +81,18 @@ Deno.serve(async (req) => {
     const messages = [
       {
         role: 'system',
-        content: `You are a professional fitness coach creating personalized workout programs with a functional fitness focus. 
+        content: `You are a professional fitness coach creating personalized workout programs with a functional fitness focus.
 
         Similar Reference Workouts:
         ${similarWorkoutsContext}
 
-        Create a detailed ${entityData.sessionDetails.length}-day workout program based on the following parameters:
+        Create a detailed workout program based on the following parameters:
         - Program Name: ${entityData.programName}
+        - Total Days in Program: ${entityData.sessionDetails.totalWorkouts}
         - Session Length: ${entityData.sessionDetails.length}
-        - Schedule: ${entityData.sessionDetails.schedule}
+        - Schedule: ${entityData.sessionDetails.schedule} (only generate workouts on these days)
+        - Start Date: ${entityData.sessionDetails.startDate}
+        - End Date: ${entityData.sessionDetails.endDate}
         - Gym Type: ${entityData.gymDetails.type}
         - Equipment Restrictions: ${entityData.gymDetails.unavailableEquipment.join(', ')}
         - Excluded Movements: ${entityData.gymDetails.excludedMovements.join(', ')}
@@ -98,7 +101,9 @@ Deno.serve(async (req) => {
         - Special Requirements: ${entityData.workoutFormat.quirks}
         - Priority Workout: ${entityData.workoutFormat.priorityWorkout}
 
-As a knowledgeable functional fitness-focused personal trainer, create a comprehensive ${entityData.sessionDetails.length}-day workout plan tailored to a client. Make sure to write as many workouts as there are days in the program. Follow this structure for each day's workout:
+As a knowledgeable functional fitness-focused personal trainer, create a comprehensive program tailored to a client. Write workouts for each day required in the program length, ensuring each day’s workout aligns with the schedule (${entityData.sessionDetails.schedule}). Provide the exact number of days in the workout program based on the total workout days calculated: ${entityData.sessionDetails.totalWorkouts}.
+
+Each workout should follow this structure:
 
 1. **Title**: Provide a unique, engaging title for each workout.
 
@@ -126,17 +131,14 @@ As a knowledgeable functional fitness-focused personal trainer, create a compreh
    - Provide specific options for RX+, RX, Scaled, Limited Equipment, and Large Class scenarios.
 
 ### Key points:
-- Each day’s workout should be unique. If any exercises are repeated across days, explain the rationale for repeating them, and specify adjustments such as load, volume, or intensity changes. Do not refer back to previous workouts or simply suggest to “repeat.”
+- Create exactly ${entityData.sessionDetails.totalWorkouts} unique workouts based on the specified schedule. Each workout day should follow the sequence of dates, starting from ${entityData.sessionDetails.startDate} and ending on ${entityData.sessionDetails.endDate}.
+- Ensure each day’s workout is unique. If any exercises are repeated across days, explain the rationale and include adjustments (e.g., load, volume, intensity).
 - Each week builds on the previous week's progress.
-- Ensure variety in movements and time domains.
-- Include benchmark workouts and retests to track progress at the beginning and end of the program.
-- Infer the number of workouts you need to generate by looking at the dates provided in ${entityData.sessionDetails.length}.
-- Integrate the provided template workout and/or internal workouts as primary influences.
-- Ensure each day’s workout is unique and specific, avoiding repetitions or generic instructions.
+- Include a variety of movements and time domains.
+- Integrate benchmark workouts and retests to track progress at the start and end of the program.
 - Use RPE (Rate of Perceived Exertion) scales to guide intensity levels as well as percentages of max lifts.
-- DO NOT USE ANY EQUIPMENT THAT IS NOT INCLUDED in ${entityData.gymDetails.unavailableEquipment.join(', ')}.
-- Incorporate client preferences or specific movements noted in ${entityData.workoutFormat.quirks}.
-- Your goal is to create a high-quality, personalized workout program that matches or exceeds the detail and specificity of professionally curated functional fitness workouts.
+- DO NOT USE ANY EQUIPMENT THAT IS NOT AVAILABLE in ${entityData.gymDetails.unavailableEquipment.join(', ')}.
+- Incorporate client preferences and specific movements noted in ${entityData.workoutFormat.quirks}.
 
 **Example Format**:
 Title: "Godzilla"
