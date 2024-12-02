@@ -1,65 +1,25 @@
-// app/entities/WorkoutFormat.js
 import React from 'react'
-import { View, Text, TextInput, TouchableOpacity } from 'react-native'
-import { useEntityContext } from 'src/contexts/EntityContext'
-import { router } from 'expo-router'
+import { View, Text, TextInput } from 'react-native'
 
-export default function WorkoutFormat() {
-  const { entityData, setEntityData } = useEntityContext()
-
-  const handleChange = (key, value) => {
-    setEntityData((prevData) => ({
-      ...prevData,
-      workoutFormat: {
-        ...prevData.workoutFormat,
-        [key]: value
-      }
-    }))
-  }
-
-  const handleNext = () => {
-    router.push('/entities/ProgramOverview')
-  }
-
+export default function WorkoutFormat({ data, onChange }) {
   return (
-    <View className="flex-1 bg-background p-4">
+    <View className="mb-8">
       <Text className="text-lg font-bold mb-4">Workout Format</Text>
-
-      <Text>Workout Format</Text>
+      <Text className="mb-2">Preferred Format</Text>
       <TextInput
-        className="border border-gray-300 rounded-md p-2 mb-4"
-        placeholder="e.g., Add Interval"
-        value={entityData.workoutFormat.format}
-        onChangeText={(value) => handleChange('format', value)}
+        className="border border-gray-300 rounded-md p-2"
+        placeholder="e.g., Strength, Conditioning, Hypertrophy"
+        value={data.format}
+        onChangeText={(text) => onChange({ ...data, format: text })}
       />
-
-      <Text>Program Focuses</Text>
+      <Text className="mt-4 mb-2">Special Instructions</Text>
       <TextInput
-        className="border border-gray-300 rounded-md p-2 mb-4"
-        placeholder="e.g., Strength Training"
-        value={entityData.workoutFormat.focus}
-        onChangeText={(value) => handleChange('focus', value)}
+        className="border border-gray-300 rounded-md p-2"
+        placeholder="Enter any special instructions"
+        value={data.instructions}
+        onChangeText={(text) => onChange({ ...data, instructions: text })}
+        multiline
       />
-
-      <Text>Program Quirks</Text>
-      <TextInput
-        className="border border-gray-300 rounded-md p-2 mb-4"
-        placeholder="e.g., None"
-        value={entityData.workoutFormat.quirks}
-        onChangeText={(value) => handleChange('quirks', value)}
-      />
-
-      <Text>Priority Workout</Text>
-      <TextInput
-        className="border border-gray-300 rounded-md p-2 mb-4"
-        placeholder="e.g., Dumbbells"
-        value={entityData.workoutFormat.priorityWorkout}
-        onChangeText={(value) => handleChange('priorityWorkout', value)}
-      />
-
-      <TouchableOpacity className="bg-orange-500 p-4 rounded-md mt-6" onPress={handleNext}>
-        <Text className="text-center text-white font-semibold">Next</Text>
-      </TouchableOpacity>
     </View>
   )
 }

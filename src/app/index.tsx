@@ -1,38 +1,18 @@
 import React from 'react'
 import { useRouter } from 'expo-router'
 import { useAuth } from 'src/contexts/AuthContext'
-import { View, Text, Image, ScrollView, useWindowDimensions } from 'react-native'
-import LOGO_IMG from '../assets/images/logo.png'
+import { View, Text, Image, ScrollView } from 'react-native'
 import SCREENS from 'src/assets/images/screens.png'
 import Button from 'src/app/ui/Button'
-import { seedEntityData, useEntityContext } from 'src/contexts/EntityContext'
 
 const HomePage = () => {
   const { session } = useAuth()
   const router = useRouter()
-  const { setEntityData } = useEntityContext()
 
   const handleGetStarted = () => {
     if (session) {
-      router.push('/entities')
+      router.push('/dashboard')
     } else {
-      router.push('/login')
-    }
-  }
-
-  const handleLearnMore = () => {
-    router.push('/about')
-  }
-
-  const handleDemoClick = async () => {
-    // Seed the context with test data
-
-    // Navigate to program generation
-    if (session) {
-      setEntityData(seedEntityData)
-      router.push('/entities/ProgramOverview')
-    } else {
-      // If not logged in, you might want to create a demo session or require login
       router.push('/login')
     }
   }
@@ -40,16 +20,7 @@ const HomePage = () => {
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
       <View className="flex-1 bg-background min-h-screen">
-        {/* Header */}
-        <View className="flex-row px-4 py-2 justify-between items-center bg-white border-b border-[rgba(0,0,0,0.38)]">
-          <Image source={LOGO_IMG} resizeMode="contain" className="w-[150px] h-[40px]" />
-          <Button variant="login" size="small" onPress={() => router.push('/login')}>
-            Login
-          </Button>
-        </View>
-
-        {/* Hero Section */}
-        <View className="flex-1 px-4 py-6 items-center bg-background-secondary">
+        <View className="flex-1 px-4 py-6 items-center">
           <View className="gap-4 max-w-[800px] items-center">
             <View className="gap-4 text-center">
               <Text className="text-4xl text-center font-bold text-text-primary">Elevate Your Fitness Programming</Text>
@@ -61,20 +32,13 @@ const HomePage = () => {
             </Text>
 
             <View className="gap-4 mt-4">
-              <Button variant="secondary" size="small" onPress={handleDemoClick}>
-                Try Demo
-              </Button>
               <Button variant="primary" size="large" onPress={handleGetStarted}>
                 Get Started
-              </Button>
-              <Button variant="secondary" size="large" onPress={handleLearnMore}>
-                Learn More
               </Button>
             </View>
           </View>
 
-          {/* Dashboard Preview */}
-          <View className="mt-6 w-full max-w-[1000px] bg-background">
+          <View className="mt-6 w-full max-w-[1000px]">
             <Image source={SCREENS} className="w-full h-[500px] rounded-lg opacity-90" resizeMode="cover" />
           </View>
         </View>
