@@ -44,7 +44,12 @@ export default function Program() {
     sessionDetails: {},
     programOverview: {},
     workoutFormat: {},
-    gymDetails: {}
+    gymDetails: {},
+    generatedProgram: '',
+    name: '',
+    description: '',
+    duration_weeks: 0,
+    focus_area: ''
   })
   const [loading, setLoading] = useState(false)
   const { supabase, user } = useAuth()
@@ -62,33 +67,39 @@ export default function Program() {
         sessionDetails: data.session_details || {},
         programOverview: data.program_overview || {},
         workoutFormat: data.workout_format || {},
-        gymDetails: data.gym_details || {}
+        gymDetails: data.gym_details || {},
+        generatedProgram: data.generated_program || '',
+        name: data.programOverview?.name || '',
+        description: data.programOverview?.description || '',
+        duration_weeks: data.sessionDetails?.totalWorkouts ? Math.ceil(data.sessionDetails.totalWorkouts / 7) : 0,
+        focus_area: data.workoutFormat?.focus || ''
       })
     }
     setLoading(false)
   }
 
-  async function saveProgram() {
-    const { error } = await supabase
-      .from('programs')
-      .update({
-        session_details: program.sessionDetails,
-        program_overview: program.programOverview,
-        workout_format: program.workoutFormat,
-        gym_details: program.gymDetails
-      })
-      .eq('id', programId)
+  async function saveProgram(generatedProgramText: string) {
+    const updates = {
+      session_details: program.sessionDetails,
+      program_overview: program.programOverview,
+      workout_format: program.workoutFormat,
+      gym_details: program.gymDetails,
+      generated_program: generatedProgramText,
+      name: program.programOverview?.name || '',
+      description: program.programOverview?.description || '',
+      duration_weeks: program.sessionDetails?.totalWorkouts ? Math.ceil(program.sessionDetails.totalWorkouts / 7) : 0,
+      focus_area: program.workoutFormat?.focus || '',
+      entity_id: entityId
+    }
+
+    const { data, error } = await supabase.from('programs').update(updates).eq('id', programId)
 
     if (error) {
       console.error('Error saving program:', error)
     } else {
-      router.push(`/entities/${entityId}`)
+      console.log('Program saved successfully')
+      console.log(generatedProgramText)
     }
-  }
-
-  // Function to populate test data
-  const populateTestData = () => {
-    setProgram(testProgram)
   }
 
   useEffect(() => {
@@ -99,41 +110,39 @@ export default function Program() {
 
   return (
     <View className="flex-1 bg-background p-4">
-      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 16 }}>
-        {loading ? (
-          <View className="flex-1 justify-center items-center">
-            <Text className="text-gray-500">Loading program...</Text>
-          </View>
-        ) : (
-          <>
-            {/* Debug button for populating test data */}
-            {__DEV__ && (
-              <TouchableOpacity onPress={populateTestData} className="bg-purple-500 p-2 rounded-md mb-4">
-                <Text className="text-white text-center">Populate Test Data</Text>
-              </TouchableOpacity>
-            )}
-            <ProgramOverview
-              data={program.programOverview}
-              onChange={(updatedOverview) => setProgram((prev) => ({ ...prev, programOverview: updatedOverview }))}
-            />
-            <SessionDetails
-              data={program.sessionDetails}
-              onChange={(updatedSessionDetails) => setProgram((prev) => ({ ...prev, sessionDetails: updatedSessionDetails }))}
-            />
-            <WorkoutFormat
-              data={program.workoutFormat}
-              onChange={(updatedWorkoutFormat) => setProgram((prev) => ({ ...prev, workoutFormat: updatedWorkoutFormat }))}
-            />
-            <GymDetails
-              data={program.gymDetails}
-              onChange={(updatedGymDetails) => setProgram((prev) => ({ ...prev, gymDetails: updatedGymDetails }))}
-            />
-            <ProgramGeneration programData={program} setLoading={setLoading} loading={loading} />
-            <Button variant="primary" size="large" onPress={saveProgram}>
-              Save Program
-            </Button>
-          </>
-        )}
+      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 16, marginBottom: 24 }}>
+        <>
+          {__DEV__ && (
+            <TouchableOpacity onPress={() => setProgram(testProgram)} className="bg-purple-500 p-2 rounded-md mb-4">
+              <Text className="text-white text-center">Populate Test Data</Text>
+            </TouchableOpacity>
+          )}
+          <ProgramOverview
+            data={program.programOverview}
+            onChange={(updatedOverview) => setProgram((prev) => ({ ...prev, programOverview: updatedOverview }))}
+          />
+          <SessionDetails
+            data={program.sessionDetails}
+            onChange={(updatedSessionDetails) => setProgram((prev) => ({ ...prev, sessionDetails: updatedSessionDetails }))}
+          />
+          <WorkoutFormat
+            data={program.workoutFormat}
+            onChange={(updatedWorkoutFormat) => setProgram((prev) => ({ ...prev, workoutFormat: updatedWorkoutFormat }))}
+          />
+          <GymDetails
+            data={program.gymDetails}
+            onChange={(updatedGymDetails) => setProgram((prev) => ({ ...prev, gymDetails: updatedGymDetails }))}
+          />
+          <ProgramGeneration
+            programData={program}
+            setLoading={setLoading}
+            loading={loading}
+            onProgramGenerated={(text) => setProgram((prev) => ({ ...prev, generatedProgram: text }))}
+          />
+          <Button variant="primary" size="large" onPress={() => saveProgram(program.generatedProgram)}>
+            Save Program
+          </Button>
+        </>
       </ScrollView>
     </View>
   )

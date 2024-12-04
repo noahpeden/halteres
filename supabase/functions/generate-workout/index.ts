@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     `.trim();
 
     try {
-      // Make a direct fetch call to the OpenAI API
+      // Make a direct fetch call to the OpenAI API for embeddings
       const response = await fetch('https://api.openai.com/v1/embeddings', {
         method: 'POST',
         headers: {
@@ -80,8 +80,6 @@ Deno.serve(async (req) => {
       }
 
       const embedding = embeddingResponse.data[0].embedding;
-
-      // Split embedding for Supabase function
       const embeddingPart1 = embedding.slice(0, Math.floor(embedding.length / 2));
       const embeddingPart2 = embedding.slice(Math.floor(embedding.length / 2));
 
@@ -116,54 +114,68 @@ Deno.serve(async (req) => {
             .join('\n\n')
         : 'No similar workouts found for reference.';
 
-      // Construct the prompt
-      const messages = [
-        {
-          role: 'system',
-          content: `You are a professional fitness coach creating personalized workout programs with a functional fitness focus.
-
-            Similar Reference Workouts:
-            ${similarWorkoutsContext}
-
-            Create a detailed workout program based on the following parameters:
-            - Program Name: ${entityData.programOverview?.name}
-            - Total Days in Program: ${entityData.sessionDetails?.totalWorkouts || 0}
-            - Session Length: ${entityData.sessionDetails?.length || 'Unknown'}
-            - Schedule: ${formatValue(entityData.sessionDetails?.schedule)}
-            - Start Date: ${entityData.sessionDetails?.startDate || 'Unknown'}
-            - End Date: ${entityData.sessionDetails?.endDate || 'Unknown'}
-            - Gym Type: ${entityData.gymDetails?.type || 'General'}
-            - Equipment Restrictions: ${formatValue(entityData.gymDetails?.unavailableEquipment)}
-            - Excluded Movements: ${formatValue(entityData.gymDetails?.excludedMovements)}
-            - Workout Format: ${formatValue(entityData.workoutFormat?.format)}
-            - Program Focus: ${entityData.workoutFormat?.focus || 'General Fitness'}
-            - Special Requirements: ${entityData.workoutFormat?.quirks || 'None'}
-            - Priority Workout: ${entityData.workoutFormat?.priorityWorkout || 'None'}
-
-            Key points:
-            - Ensure workouts align with the specified schedule (${formatValue(entityData.sessionDetails?.schedule)}).
-            - Ensure each day's workout is unique.
-            - Use only available equipment and respect client restrictions.
-            - Include variety, progressions, and benchmarks.`,
+      // Make a direct fetch call to the OpenAI chat completions API
+      const chatResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+          'Content-Type': 'application/json',
         },
-      ];
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a professional fitness coach creating personalized workout programs with a functional fitness focus.
 
-      // Send the prompt to OpenAI with streaming
-      const completion = await openai.chat('gpt-4', {
-        messages,
-        temperature: 0.7,
-        stream: true,
+                Similar Reference Workouts:
+                ${similarWorkoutsContext}
+
+                Create a detailed workout program based on the following parameters:
+                - Program Name: ${entityData.programOverview?.name}
+                - Total Days in Program: ${entityData.sessionDetails?.totalWorkouts || 0}
+                - Session Length: ${entityData.sessionDetails?.length || 'Unknown'}
+                - Schedule: ${formatValue(entityData.sessionDetails?.schedule)}
+                - Start Date: ${entityData.sessionDetails?.startDate || 'Unknown'}
+                - End Date: ${entityData.sessionDetails?.endDate || 'Unknown'}
+                - Gym Type: ${entityData.gymDetails?.type || 'General'}
+                - Equipment Restrictions: ${formatValue(entityData.gymDetails?.unavailableEquipment)}
+                - Excluded Movements: ${formatValue(entityData.gymDetails?.excludedMovements)}
+                - Workout Format: ${formatValue(entityData.workoutFormat?.format)}
+                - Program Focus: ${entityData.workoutFormat?.focus || 'General Fitness'}
+                - Special Requirements: ${entityData.workoutFormat?.quirks || 'None'}
+                - Priority Workout: ${entityData.workoutFormat?.priorityWorkout || 'None'}
+
+                Key points:
+                - Ensure workouts align with the specified schedule (${formatValue(entityData.sessionDetails?.schedule)}).
+                - Ensure each day's workout is unique.
+                - Use only available equipment and respect client restrictions.
+                - Include variety, progressions, and benchmarks.`
+            }
+          ],
+          temperature: 0.7,
+          stream: true,
+        }),
       });
 
-      return new Response(completion.body, {
+      if (!chatResponse.ok) {
+        const errorData = await chatResponse.json();
+        throw new Error(`OpenAI Chat API error: ${JSON.stringify(errorData)}`);
+      }
+
+      // Return the streaming response with correct headers
+      return new Response(chatResponse.body, {
         headers: {
           ...corsHeaders,
           'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
         },
       });
-    } catch (embeddingError) {
-      console.error('Embedding error:', embeddingError);
-      throw new Error(`Embedding creation failed: ${embeddingError.message}`);
+
+    } catch (apiError) {
+      console.error('API error:', apiError);
+      throw apiError;
     }
   } catch (error) {
     console.error('Full error details:', {
