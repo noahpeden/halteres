@@ -16,8 +16,6 @@ import { View, Text, TouchableOpacity, Image } from 'react-native'
 const PLACEHOLDER_AVATAR = '/api/placeholder/40/40'
 
 export default function EntityCard({ entity, deleteEntity }) {
-  console.log('Rendering EntityCard for:', entity)
-
   const memberCount = entity.details?.members?.length || 0
   const descriptionText =
     typeof entity.description === 'string'

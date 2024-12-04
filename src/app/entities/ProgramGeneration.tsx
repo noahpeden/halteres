@@ -1,20 +1,60 @@
-import React from 'react'
-import { View, Text, TextInput, TouchableOpacity } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native'
+import { useEntityContext } from 'src/contexts/EntityContext'
+import WorkoutProgramDisplay from 'src/app/shared/GenerationDisplay'
 
-export default function ProgramGeneration({ programData, onGenerate }) {
+interface ProgramGenerationProps {
+  programData: any // Replace 'any' with a more specific type if available
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>
+  loading: boolean
+}
+
+const ProgramGeneration: React.FC<ProgramGenerationProps> = ({ programData, setLoading, loading }) => {
+  const [generatedProgram, setGeneratedProgram] = useState('')
+
+  const generateProgram = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('https://vrmuakouskjbabedjhoc.supabase.co/functions/v1/generate-workout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ entityData: programData })
+      })
+
+      if (!response.body) {
+        console.error('No stream returned. Falling back to error message.')
+        throw new Error(await response.text()) // Attempt to read the full response body as text
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      setGeneratedProgram('')
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        setGeneratedProgram((prev) => prev + chunk)
+      }
+    } catch (error) {
+      console.error('Error generating program:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
   return (
-    <View className="mb-8">
+    <ScrollView contentContainerStyle={{ padding: 16 }}>
       <Text className="text-lg font-bold mb-4">Program Generation</Text>
-      <Text className="mb-2">Any Additional Notes for the Program</Text>
-      <TextInput
-        className="border border-gray-300 rounded-md p-2"
-        placeholder="Enter additional notes"
-        multiline
-        onChangeText={(text) => onGenerate({ ...programData, additionalNotes: text })}
-      />
-      <TouchableOpacity className="bg-primary mt-4 p-4 rounded-md" onPress={() => onGenerate(programData)}>
-        <Text className="text-white text-center font-semibold">Generate Program</Text>
+      <Text className="text-md mb-4">You can make edits or, if everything looks good, proceed by selecting 'Create Program'.</Text>
+      {loading ? <ActivityIndicator size="large" color="#FF7F50" /> : <WorkoutProgramDisplay programText={generatedProgram} />}
+
+      <TouchableOpacity className="bg-orange-500 p-4 rounded-md" onPress={generateProgram} disabled={loading}>
+        <Text className="text-center text-white font-semibold">Create Program</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   )
 }
+
+export default ProgramGeneration

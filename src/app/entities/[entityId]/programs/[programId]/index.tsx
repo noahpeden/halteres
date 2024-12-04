@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, ScrollView, Text } from 'react-native'
+import { View, ScrollView, Text, TouchableOpacity } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from 'src/contexts/AuthContext'
 import Button from 'src/app/ui/Button'
@@ -8,6 +8,36 @@ import ProgramGeneration from 'src/app/entities/ProgramGeneration'
 import ProgramOverview from 'src/app/entities/ProgramOverview'
 import WorkoutFormat from 'src/app/entities/WorkoutFormat'
 import GymDetails from 'src/app/entities/GymDetails'
+
+const testProgram = {
+  sessionDetails: {
+    sessionsPerWeek: '4',
+    sessionDuration: '60',
+    totalWorkouts: 16,
+    schedule: ['Monday', 'Tuesday', 'Thursday', 'Friday'],
+    length: '60 minutes',
+    startDate: new Date().toISOString(),
+    endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  programOverview: {
+    name: 'Test Strength Program',
+    description: 'A 4-week strength program focusing on compound movements and progressive overload.'
+  },
+  workoutFormat: {
+    format: ['Strength', 'Hypertrophy'], // Now properly an array
+    instructions: 'Focus on compound movements with progressive overload',
+    focus: 'Strength and Muscle Building',
+    quirks: 'Emphasize proper form and tempo',
+    priorityWorkout: 'Strength training'
+  },
+  gymDetails: {
+    equipment: 'Barbells, Dumbbells, Squat Rack, Bench, Kettlebells',
+    spaceDescription: 'Full commercial gym setup',
+    type: 'Commercial Gym',
+    unavailableEquipment: [],
+    excludedMovements: []
+  }
+}
 
 export default function Program() {
   const [program, setProgram] = useState({
@@ -52,9 +82,13 @@ export default function Program() {
     if (error) {
       console.error('Error saving program:', error)
     } else {
-      console.log('Program saved successfully')
-      router.push(`/entities/${entityId}`) // Navigate back to the entity page
+      router.push(`/entities/${entityId}`)
     }
+  }
+
+  // Function to populate test data
+  const populateTestData = () => {
+    setProgram(testProgram)
   }
 
   useEffect(() => {
@@ -72,6 +106,12 @@ export default function Program() {
           </View>
         ) : (
           <>
+            {/* Debug button for populating test data */}
+            {__DEV__ && (
+              <TouchableOpacity onPress={populateTestData} className="bg-purple-500 p-2 rounded-md mb-4">
+                <Text className="text-white text-center">Populate Test Data</Text>
+              </TouchableOpacity>
+            )}
             <ProgramOverview
               data={program.programOverview}
               onChange={(updatedOverview) => setProgram((prev) => ({ ...prev, programOverview: updatedOverview }))}
@@ -88,13 +128,10 @@ export default function Program() {
               data={program.gymDetails}
               onChange={(updatedGymDetails) => setProgram((prev) => ({ ...prev, gymDetails: updatedGymDetails }))}
             />
-            <ProgramGeneration
-              programData={program}
-              onGenerate={(generatedProgram) => {
-                console.log('Generated Program:', generatedProgram)
-                setProgram((prev) => ({ ...prev, programOverview: generatedProgram }))
-              }}
-            />
+            <ProgramGeneration programData={program} setLoading={setLoading} loading={loading} />
+            <Button variant="primary" size="large" onPress={saveProgram}>
+              Save Program
+            </Button>
           </>
         )}
       </ScrollView>

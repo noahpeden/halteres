@@ -28,7 +28,6 @@ export default function Entity() {
   async function fetchPrograms() {
     setLoading(true)
     const { data, error } = await supabase.from('programs').select('*').eq('entity_id', entityId)
-
     if (error) {
       console.error('Error fetching programs:', error)
     } else {
@@ -43,27 +42,24 @@ export default function Entity() {
       .from('programs')
       .insert({
         entity_id: entityId,
-        name: '', // Placeholder name
-        description: '', // Placeholder description
-        duration_weeks: 0, // Default duration
-        focus_area: '' // Default focus area
+        name: '',
+        description: '',
+        duration_weeks: 0,
+        focus_area: ''
       })
-      .select('id') // Retrieve the ID of the newly created program
+      .select('id')
       .single()
 
     if (error) {
       console.error('Error creating program:', error)
       return
     }
-
-    router.push(`/entities/${entityId}/programs/${data.id}`)
+    // router.push(`/entities/${entityId}/programs/${data.id}`)
   }
 
   useEffect(() => {
-    if (user?.id && entityId) {
-      fetchEntityDetails()
-      fetchPrograms()
-    }
+    fetchEntityDetails()
+    fetchPrograms()
   }, [user?.id, entityId])
 
   return (
