@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from 'src/contexts/AuthContext'
 import Button from 'src/app/ui/Button'
@@ -37,24 +37,57 @@ export default function Entity() {
     setLoading(false)
   }
 
-  async function createProgram() {
-    const { data, error } = await supabase
-      .from('programs')
-      .insert({
-        entity_id: entityId,
-        name: '',
-        description: '',
-        duration_weeks: 0,
-        focus_area: ''
-      })
-      .select('id')
-      .single()
+  async function deleteProgram(programId: string) {
+    Alert.alert('Delete Program', 'Are you sure you want to delete this program? This action cannot be undone.', [
+      {
+        text: 'Cancel',
+        style: 'cancel'
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.from('programs').delete().eq('id', programId)
 
-    if (error) {
+          if (error) {
+            console.error('Error deleting program:', error)
+            Alert.alert('Error', 'Failed to delete program')
+          } else {
+            // Refresh programs list after deletion
+            fetchPrograms()
+          }
+        }
+      }
+    ])
+  }
+
+  async function createProgram() {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('programs')
+        .insert({
+          entity_id: entityId,
+          name: 'New Program',
+          description: '',
+          duration_weeks: 0,
+          focus_area: ''
+        })
+        .select('id')
+        .single()
+
+      if (error) {
+        throw error
+      }
+
+      // Navigate to the new program
+      router.push(`/entities/${entityId}/programs/${data.id}`)
+    } catch (error) {
       console.error('Error creating program:', error)
-      return
+      Alert.alert('Error', 'Failed to create program')
+    } finally {
+      setLoading(false)
     }
-    // router.push(`/entities/${entityId}/programs/${data.id}`)
   }
 
   useEffect(() => {
@@ -64,7 +97,10 @@ export default function Entity() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 16 }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }} // Add padding at bottom
+      >
         {loading ? (
           <View className="flex-1 justify-center items-center">
             <Text className="text-gray-500">Loading...</Text>
@@ -80,22 +116,28 @@ export default function Entity() {
               <Text className="text-lg font-bold mb-4">Programs</Text>
               {programs.length > 0 ? (
                 programs.map((program) => (
-                  <TouchableOpacity
-                    key={program.id}
-                    className="p-4 bg-white rounded-lg shadow-sm mb-4"
-                    onPress={() => router.push(`/entities/${entityId}/programs/${program.id}`)}>
-                    <Text className="text-base font-semibold">{program.name || 'Untitled Program'}</Text>
-                    <Text className="text-sm text-gray-600">{program.description || 'No description available.'}</Text>
-                  </TouchableOpacity>
+                  <View key={program.id} className="flex-row items-center mb-4">
+                    <TouchableOpacity
+                      className="flex-1 p-4 bg-white rounded-lg shadow-sm"
+                      onPress={() => router.push(`/entities/${entityId}/programs/${program.id}`)}>
+                      <Text className="text-base font-semibold">{program.name || 'Untitled Program'}</Text>
+                      <Text className="text-sm text-gray-600">{program.description || 'No description available.'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity className="ml-2 p-4" onPress={() => deleteProgram(program.id)}>
+                      <Text className="text-red-500">Delete</Text>
+                    </TouchableOpacity>
+                  </View>
                 ))
               ) : (
                 <Text className="text-sm text-gray-500">No programs found. Create a new one!</Text>
               )}
             </View>
 
-            <Button variant="primary" size="large" onPress={createProgram}>
-              Create a New Program
-            </Button>
+            <View className="mt-auto">
+              <Button variant="primary" size="large" onPress={createProgram} disabled={loading}>
+                Create a New Program
+              </Button>
+            </View>
           </>
         )}
       </ScrollView>

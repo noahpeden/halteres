@@ -1,5 +1,5 @@
 import React from 'react'
-import { MoreVertical } from 'lucide-react-native'
+import { X } from 'lucide-react-native'
 import { router } from 'expo-router'
 import {
   AlertDialog,
@@ -39,12 +39,12 @@ export default function EntityCard({ entity, deleteEntity }) {
 
       <View className="flex-row items-center gap-2">
         <TouchableOpacity className="px-4 py-2 rounded-lg bg-primary-light" onPress={() => router.push(`/entities/${entity.id}`)}>
-          <Text className="text-primary font-semibold">Select</Text>
+          <Text className="text-primary font-semibold">Edit</Text>
         </TouchableOpacity>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <TouchableOpacity className="p-2">
-              <MoreVertical className="text-text-secondary" size={20} />
+            <TouchableOpacity className="p-2 bg-red-100 rounded-full">
+              <X color="#EF4444" size={20} />
             </TouchableOpacity>
           </AlertDialogTrigger>
           <AlertDialogContent>

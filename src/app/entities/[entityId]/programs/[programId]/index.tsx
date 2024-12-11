@@ -92,13 +92,13 @@ export default function Program() {
       entity_id: entityId
     }
 
-    const { data, error } = await supabase.from('programs').update(updates).eq('id', programId)
+    const { error } = await supabase.from('programs').update(updates).eq('id', programId)
 
     if (error) {
       console.error('Error saving program:', error)
     } else {
       console.log('Program saved successfully')
-      console.log(generatedProgramText)
+      router.push(`/entities/${entityId}`)
     }
   }
 
