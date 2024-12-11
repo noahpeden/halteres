@@ -1,5 +1,5 @@
 import styled from 'styled-components/native'
-import Spinner from 'src/components/Spinner'
+import Spinner from 'src/app/components/ui/Spinner'
 import useCacheAssets from 'src/hooks/useCacheAssets'
 
 interface Props {

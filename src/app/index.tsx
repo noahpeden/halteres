@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router'
 import { useAuth } from 'src/contexts/AuthContext'
 import { View, Text, Image, ScrollView } from 'react-native'
 import SCREENS from 'src/assets/images/screens.png'
-import Button from 'src/app/ui/Button'
+import Button from 'src/app/components/ui/Button'
 
 const HomePage = () => {
   const { session } = useAuth()
@@ -11,7 +11,7 @@ const HomePage = () => {
 
   const handleGetStarted = () => {
     if (session) {
-      router.push('/dashboard')
+      router.push('/entities')
     } else {
       router.push('/login')
     }

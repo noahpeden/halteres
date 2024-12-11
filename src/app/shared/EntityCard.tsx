@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger
-} from 'src/app/ui/AlertDialog'
+} from 'src/app/components/ui/AlertDialog'
 import { View, Text, TouchableOpacity, Image } from 'react-native'
 const PLACEHOLDER_AVATAR = '/api/placeholder/40/40'
 

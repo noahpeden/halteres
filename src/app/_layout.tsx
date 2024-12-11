@@ -9,11 +9,11 @@ import { Poppins_300Light, Poppins_400Regular, Poppins_600SemiBold, Poppins_700B
 import { supabase } from 'src/utils/supabase/client'
 import { AuthProvider } from 'src/contexts/AuthContext'
 import { EntityProvider } from 'src/contexts/EntityContext'
-import Spinner from 'src/components/Spinner'
-import Theme from './ui/Theme'
+import Spinner from 'src/app/components/ui/Spinner'
+import Theme from 'src/app/components/ui/Theme'
 import './global.css'
 import LOGO_IMG from 'src/assets/images/logo.png'
-import Button from 'src/app/ui/Button'
+import Button from 'src/app/components/ui/Button'
 
 export default function AppLayout() {
   const router = useRouter()
@@ -70,7 +70,7 @@ export default function AppLayout() {
                   </View>
                 </Link>
                 {session ? (
-                  <Button variant="login" onPress={() => router.push('/dashboard')}>
+                  <Button variant="login" onPress={() => router.push('/entities')}>
                     Dashboard
                   </Button>
                 ) : (
