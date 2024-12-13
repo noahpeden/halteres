@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, ScrollView } from 'react-native'
 import { router } from 'expo-router'
-import EntityCard from 'src/app/shared/EntityCard'
+import EntityCard from 'src/app/components/ui/Card'
 import Button from 'src/app/components/ui/Button'
 import { useAuth } from 'src/contexts/AuthContext'
 

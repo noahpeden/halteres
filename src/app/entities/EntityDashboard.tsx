@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, ScrollView } from 'react-native'
 import { router } from 'expo-router'
-import EntityCard from 'src/app/shared/EntityCard'
+import EntityCard from 'src/app/components/ui/Card'
 import Button from 'src/app/components/ui/Button'
 import { useAuth } from 'src/contexts/AuthContext'
+import Card from 'src/app/components/ui/Card'
 
 export default function Dashboard() {
   const [entities, setEntities] = useState([])
@@ -53,7 +54,7 @@ export default function Dashboard() {
               <View className="mb-8">
                 <Text className="text-md font-bold mb-4">Classes</Text>
                 {classes.map((entity) => (
-                  <EntityCard key={entity.id} entity={entity} deleteEntity={deleteEntity} />
+                  <Card type="entity" key={entity.id} item={entity} onDelete={deleteEntity} />
                 ))}
               </View>
             )}
@@ -61,7 +62,7 @@ export default function Dashboard() {
               <View>
                 <Text className="text-md font-bold mb-4">Clients</Text>
                 {clients.map((entity) => (
-                  <EntityCard key={entity.id} entity={entity} deleteEntity={deleteEntity} />
+                  <Card type="entity" key={entity.id} item={entity} onDelete={deleteEntity} />
                 ))}
               </View>
             )}

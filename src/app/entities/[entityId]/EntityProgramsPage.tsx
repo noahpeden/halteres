@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from 'src/contexts/AuthContext'
 import Button from 'src/app/components/ui/Button'
+import Card from 'src/app/components/ui/Card'
 
 export default function EntityProgramsPage() {
   const [programs, setPrograms] = useState([])
@@ -94,7 +95,7 @@ export default function EntityProgramsPage() {
     fetchEntityDetails()
     fetchPrograms()
   }, [user?.id, entityId])
-
+  console.log(programs)
   return (
     <View className="flex-1 bg-background">
       <ScrollView
@@ -115,19 +116,7 @@ export default function EntityProgramsPage() {
             <View className="mb-8">
               <Text className="text-lg font-bold mb-4">Programs</Text>
               {programs.length > 0 ? (
-                programs.map((program) => (
-                  <View key={program.id} className="flex-row items-center mb-4">
-                    <TouchableOpacity
-                      className="flex-1 p-4 bg-white rounded-lg shadow-sm"
-                      onPress={() => router.push(`/entities/${entityId}/programs/${program.id}`)}>
-                      <Text className="text-base font-semibold">{program.name || 'Untitled Program'}</Text>
-                      <Text className="text-sm text-gray-600">{program.description || 'No description available.'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="ml-2 p-4" onPress={() => deleteProgram(program.id)}>
-                      <Text className="text-red-500">Delete</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
+                programs.map((program) => <Card type="program" key={program.id} item={program} onDelete={deleteProgram} />)
               ) : (
                 <Text className="text-sm text-gray-500">No programs found. Create a new one!</Text>
               )}

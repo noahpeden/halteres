@@ -1,1 +1,1 @@
-export { default } from '../components/EntitiesPage'
+export { default } from './EntityDashboard'

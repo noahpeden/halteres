@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native'
-import WorkoutProgramDisplay from 'src/app/shared/GenerationDisplay'
+import WorkoutProgramDisplay from 'src/app/components/GenerationDisplay'
 
 interface ProgramGenerationProps {
   programData: any
