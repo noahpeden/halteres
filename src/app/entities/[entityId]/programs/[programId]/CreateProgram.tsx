@@ -59,7 +59,7 @@ export default function CreateProgram() {
   async function fetchProgramDetails() {
     setLoading(true)
     const { data, error } = await supabase.from('programs').select('*').eq('id', programId).single()
-
+    console.log(data)
     if (error) {
       console.error('Error fetching program details:', error)
     } else {
@@ -138,6 +138,7 @@ export default function CreateProgram() {
             setLoading={setLoading}
             loading={loading}
             onProgramGenerated={(text) => setProgram((prev) => ({ ...prev, generatedProgram: text }))}
+            initialProgram={program.generatedProgram} // Add this line
           />
           <Button variant="primary" size="large" onPress={() => saveProgram(program.generatedProgram)}>
             Save Program
