@@ -15,7 +15,8 @@ export default function CreateProgram() {
       startDate: '',
       endDate: '',
       schedule: [],
-      sessionDuration: ''
+      sessionDuration: '',
+      duration_weeks: 0
     },
     programOverview: {
       name: '',
@@ -74,7 +75,8 @@ export default function CreateProgram() {
           startDate: data.session_details?.startDate || '',
           endDate: data.session_details?.endDate || '',
           schedule: data.session_details?.schedule || [],
-          sessionDuration: data.session_details?.sessionDuration || ''
+          sessionDuration: data.session_details?.sessionDuration || '',
+          duration_weeks: data.duration_weeks || 0
         },
         programOverview: {
           name: data.program_overview?.name || data.name || '',
@@ -99,6 +101,7 @@ export default function CreateProgram() {
         focus_area: parsedFocusArea || [],
         entity_id: data.entity_id || ''
       })
+      console.log(data.generated_program)
     } catch (error) {
       console.error('Error in fetchProgramDetails:', error)
     } finally {
@@ -106,12 +109,12 @@ export default function CreateProgram() {
     }
   }
 
+  console.log(program.duration_weeks)
   async function saveProgram(generatedProgramText: string) {
     if (!programId) return
 
     try {
       const { data: existingProgram } = await supabase.from('programs').select('entity_id').eq('id', programId).single()
-
       const updates = {
         session_details: program.sessionDetails,
         program_overview: program.programOverview,
@@ -120,7 +123,7 @@ export default function CreateProgram() {
         generated_program: generatedProgramText,
         name: program.programOverview?.name || '',
         description: program.programOverview?.description || '',
-        duration_weeks: program.sessionDetails?.schedule?.length || 0,
+        duration_weeks: program.sessionDetails.duration_weeks || program.duration_weeks || 0,
         focus_area: JSON.stringify(program.workoutFormat?.focus || []),
         entity_id: existingProgram?.entity_id
       }
@@ -159,8 +162,17 @@ export default function CreateProgram() {
               onChange={(updatedOverview) => setProgram((prev) => ({ ...prev, programOverview: updatedOverview }))}
             />
             <SessionDetails
-              data={program.sessionDetails}
-              onChange={(updatedSessionDetails) => setProgram((prev) => ({ ...prev, sessionDetails: updatedSessionDetails }))}
+              data={{
+                ...program.sessionDetails,
+                duration_weeks: program.duration_weeks // Make sure we pass the correct field
+              }}
+              onChange={(updatedSessionDetails) =>
+                setProgram((prev) => ({
+                  ...prev,
+                  sessionDetails: updatedSessionDetails,
+                  duration_weeks: updatedSessionDetails.duration_weeks // Update both places
+                }))
+              }
             />
             <WorkoutFormat
               data={program.workoutFormat}

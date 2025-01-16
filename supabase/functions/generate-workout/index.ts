@@ -1,10 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// import { createOpenAI } from 'https://esm.sh/@ai-sdk/openai@latest'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
-
-// const openai = createOpenAI({
-//   apiKey: Deno.env.get('OPENAI_API_KEY')
-// })
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
@@ -12,7 +6,10 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'text/event-stream; charset=utf-8',
+  'Cache-Control': 'no-cache',
+  'Connection': 'keep-alive'
 }
 
 const formatValue = (value: any): string => {
@@ -25,10 +22,11 @@ const formatValue = (value: any): string => {
   return String(value || '')
 }
 
-async function* generateWorkoutsForWeek(
+async function* generateWorkoutWeek(
   weekNumber: number,
   totalWeeks: number,
   entityData: any,
+  previousWeeks: string,
   similarWorkoutsContext: string
 ) {
   const weekStartDate = new Date(entityData.sessionDetails.startDate)
@@ -44,77 +42,45 @@ async function* generateWorkoutsForWeek(
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'developer',
           content: `You are a professional fitness coach creating detailed, personalized workout programs. 
-
-              PROGRAM DETAILS:
-              - Duration: ${entityData.sessionDetails?.schedule.length} weeks
-              - Workouts per Week: ${entityData.sessionDetails?.schedule.length}
-              
-              INSTRUCTIONS:
-              1. Generate ONLY Week ${weekNumber} of ${totalWeeks}. Current week dates: ${weekStartDate.toISOString().split('T')[0]} to ${weekEndDate.toISOString().split('T')[0]}
-              2. Each day must be written out completely, with no skipping or summarizing.
-              3. Provide the date, title, focus areas, detailed warmup, main workout with sets/reps/rest, and cooldown for each day.
-              4. Avoid phrases like 'continue the same workouts' or 'similar to previous workouts.' Write out every session completely.
-              5. Each workout must account for equipment availability, injuries, and skill levels.
-              6. Always assume the client would like to continue the generation if the response is cut off.
-              7. Continue the generation until all workouts for this week are complete.
-              
-              PROGRAM REQUIREMENTS:
-              1. Training Styles: ${formatValue(entityData.workoutFormat?.format)}
-              2. Focus Areas: ${formatValue(entityData.workoutFormat?.focus)}
-              3. Program Duration: ${entityData.sessionDetails?.startDate} to ${entityData.sessionDetails?.endDate}
-              4. Workout Schedule: ${formatValue(entityData.sessionDetails?.schedule)}
-              5. Session Duration: ${entityData.sessionDetails?.sessionDuration} minutes
-              6. Program Instructions: ${entityData.workoutFormat?.instructions || 'None provided'}
-              7. Equipment Available: ${entityData.gymDetails?.equipment || 'Standard Gym'}
-              
-              MEDICAL CONSIDERATIONS:
-              Injuries and Movement Restrictions: ${entityData.workoutFormat?.quirks || 'None reported'}
-              
-              FORMAT REQUIREMENTS:
-              1. Write out EVERY workout in complete detail
-              2. Format each day as:
-                 [DATE: MM-DD-YYYY]
-                 Workout Title:
-                 
-                 Focus: [Areas being targeted]
-                 Duration: [Total minutes]
-                 
-                 Warmup: (10-15 minutes)
-                 [Detailed warmup routine]
-                 
-                 Main Work: (Specify duration)
-                 [Complete workout with all details]
-                 
-                 Cooldown: (5-10 minutes)
-                 [Specific cooldown/mobility work]
-                 
-                 Modifications:
-                 - Scaling options
-                 - Injury accommodations
-                 - Intensity adjustments
-              
-              3. For each exercise, specify:
-                 - Sets, reps, and rest periods
-                 - RX weights (male/female)
-                 - Scaled weights (male/female)
-                 - Form cues and common faults
-                 - Modifications for listed injuries
-              
-              4. NEVER use phrases like:
-                 - "continue with similar workouts"
-                 - "repeat previous workout"
-                 - "alternate between"
-                 Instead, write out each workout completely.
-              
-              Similar Reference Workouts:
-              ${similarWorkoutsContext}
-              
-              Create the workouts for Week ${weekNumber} following all these requirements while carefully accounting for the listed injuries and movement restrictions.`
+          You are currently generating Week ${weekNumber} of ${totalWeeks}. Consider the previous weeks' workouts
+          for proper progression and variation.`
+        },
+        {
+          role: 'user',
+          content: `
+          PROGRAM DETAILS:
+          - Duration: ${totalWeeks} weeks
+          - Workouts per Week: ${entityData.sessionDetails?.schedule.length}
+          
+          INSTRUCTIONS:
+          1. Generate Week ${weekNumber} of ${totalWeeks}. Current week dates: ${weekStartDate.toISOString().split('T')[0]} to ${weekEndDate.toISOString().split('T')[0]}
+          2. Each day must be written out completely, with no summarizing
+          3. Include date, title, focus areas, warmup, main workout (sets/reps/rest), and cooldown
+          4. Account for equipment availability, injuries, and skill levels
+          
+          PROGRAM REQUIREMENTS:
+          1. Training Styles: ${formatValue(entityData.workoutFormat?.format)}
+          2. Focus Areas: ${formatValue(entityData.workoutFormat?.focus)}
+          3. Workout Schedule: ${formatValue(entityData.sessionDetails?.schedule)}
+          4. Session Duration: ${entityData.sessionDetails?.sessionDuration} minutes
+          5. Program Instructions: ${entityData.workoutFormat?.instructions || 'None provided'}
+          6. Equipment Available: ${entityData.gymDetails?.equipment || 'Standard Gym'}
+          
+          MEDICAL CONSIDERATIONS:
+          ${entityData.workoutFormat?.quirks || 'None reported'}
+          
+          PREVIOUS WEEKS:
+          ${previousWeeks}
+          
+          SIMILAR WORKOUTS FOR REFERENCE:
+          ${similarWorkoutsContext}
+          
+          Create detailed workouts for Week ${weekNumber}, ensuring proper progression from previous weeks.`
         }
       ],
       temperature: 0.7,
@@ -128,14 +94,17 @@ async function* generateWorkoutsForWeek(
 
   const reader = chatResponse.body?.getReader()
   const decoder = new TextDecoder()
+  let buffer = ''
 
   while (reader) {
     const { done, value } = await reader.read()
     if (done) break
 
     const chunk = decoder.decode(value)
-    let buffer = ''
-    const lines = chunk.split('\n')
+    buffer += chunk
+    
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
     
     for (const line of lines) {
       if (line.startsWith('data: ')) {
@@ -144,27 +113,23 @@ async function* generateWorkoutsForWeek(
         if (data === '[DONE]') continue
         
         try {
-          // Accumulate the buffer only for incomplete chunks
-          if (!data.endsWith('}')) {
-            buffer += data
-            continue
-          }
-          
-          const payload = JSON.parse(buffer + data)
-          buffer = '' // Reset buffer after successful parse
-          
+          const payload = JSON.parse(data)
           if (payload.choices?.[0]?.delta?.content) {
-            yield payload.choices[0].delta.content
+            const content = payload.choices[0].delta.content
+            yield content
           }
         } catch (e) {
-          // Only log parsing errors for complete chunks
-          if (data.endsWith('}')) {
-            console.error('Error parsing complete SSE chunk:', e)
+          if (data && data !== '[DONE]') {
+            yield data
           }
           continue
         }
       }
     }
+  }
+
+  if (buffer) {
+    yield buffer
   }
 }
 
@@ -174,25 +139,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (!Deno.env.get('OPENAI_API_KEY')) {
-      throw new Error('OpenAI API key is not configured')
-    }
-
     const { entityData } = await req.json()
     if (!entityData) {
       throw new Error('No entity data provided')
     }
 
-    // Get embeddings and similar workouts first
+    // Get similar workouts context first
     const queryText = `
       Program: ${entityData.programOverview?.name || 'Unnamed Program'}
       Description: ${entityData.programOverview?.description || 'No description provided'}
       Training Styles: ${formatValue(entityData.workoutFormat?.format)}
       Focus Areas: ${formatValue(entityData.workoutFormat?.focus)}
-      Program Instructions: ${entityData.workoutFormat?.instructions || 'None provided'}
-      Injuries/Restrictions: ${entityData.workoutFormat?.quirks || 'None provided'}
       Equipment: ${entityData.gymDetails?.equipment || 'Standard Gym'}
-      Space: ${entityData.gymDetails?.spaceDescription || 'Standard space'}
     `.trim()
 
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
@@ -227,19 +185,8 @@ Deno.serve(async (req) => {
       }
     )
 
-    if (searchError) {
-      console.error('Error searching workouts:', searchError)
-    }
-
     const similarWorkoutsContext = similarWorkouts?.length
-      ? similarWorkouts
-          .map(
-            (workout) => `
-              ${workout.title}:
-              ${workout.body}
-            `
-          )
-          .join('\n\n')
+      ? similarWorkouts.map(workout => `${workout.title}:\n${workout.body}`).join('\n\n')
       : 'No similar workouts found for reference.'
 
     // Set up streaming response
@@ -247,77 +194,79 @@ Deno.serve(async (req) => {
     const writer = stream.writable.getWriter()
     const encoder = new TextEncoder()
 
-    // Start processing weeks in the background
-    const processWeeks = async () => {
+    // Process weeks in the background
+const processWeeks = async () => {
+  try {
+    const totalWeeks = Math.min(6, entityData.duration_weeks || 0)
+    let previousWeeks = ''
+    
+    for (let week = 1; week <= totalWeeks; week++) {
       try {
-        const totalWeeks = entityData.sessionDetails?.schedule.length || 0
-        
-        for (let week = 1; week <= totalWeeks; week++) {
-          try {
-            // Add a week separator
-            await writer.write(
-              encoder.encode(`data: \n\nWeek ${week} of ${totalWeeks}:\n\n`)
-            )
+        await writer.write(
+          encoder.encode(`data: \n\n--- Starting Week ${week} of ${totalWeeks} ---\n\n`)
+        )
 
-            // Generate and stream each week's workouts
-            for await (const chunk of generateWorkoutsForWeek(
-              week,
-              totalWeeks,
-              entityData,
-              similarWorkoutsContext
-            )) {
-              if (chunk && typeof chunk === 'string') {
-                await writer.write(encoder.encode(`data: ${chunk}\n\n`))
+        let weekContent = ''
+        let lineBuffer = ''
+        
+        for await (const chunk of generateWorkoutWeek(
+          week,
+          totalWeeks,
+          entityData,
+          previousWeeks,
+          similarWorkoutsContext
+        )) {
+          if (chunk) {
+            weekContent += chunk
+            lineBuffer += chunk
+            
+            // Send complete lines when we have them
+            if (lineBuffer.includes('\n')) {
+              const lines = lineBuffer.split('\n')
+              lineBuffer = lines.pop() || ''
+              for (const line of lines) {
+                await writer.write(encoder.encode(`data: ${line}\n`))
               }
             }
-          } catch (weekError) {
-            console.error(`Error processing week ${week}:`, weekError)
-            await writer.write(
-              encoder.encode(`data: Error generating week ${week}: ${weekError.message}\n\n`)
-            )
-            // Continue with next week despite error
-            continue
           }
         }
-      } catch (error) {
-        console.error('Fatal error in week processing:', error)
-        await writer.write(
-          encoder.encode(`data: Fatal error generating workouts: ${error.message}\n\n`)
-        )
-      } finally {
-        try {
-          await writer.write(encoder.encode('data: [DONE]\n\n'))
-          await writer.close()
-        } catch (closeError) {
-          console.error('Error closing writer:', closeError)
+        
+        // Send any remaining content
+        if (lineBuffer) {
+          await writer.write(encoder.encode(`data: ${lineBuffer}\n`))
         }
+        
+        previousWeeks += `\n\nWEEK ${week}:\n${weekContent}`
+        await writer.write(encoder.encode(`data: \n--- End of Week ${week} ---\n\n`))
+      } catch (weekError) {
+        console.error(`Error processing week ${week}:`, weekError)
+        await writer.write(
+          encoder.encode(`data: Error generating week ${week}: ${weekError.message}\n\n`)
+        )
+        continue
       }
     }
-
-    // Start processing in the background
+  } catch (error) {
+    console.error('Fatal error in week processing:', error)
+    await writer.write(
+      encoder.encode(`data: Fatal error generating workouts: ${error.message}\n\n`)
+    )
+  } finally {
+    await writer.write(encoder.encode('data: [DONE]\n\n'))
+    await writer.close()
+  }
+}
     processWeeks()
 
-    // Return the streaming response
     return new Response(stream.readable, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-      }
+      headers: corsHeaders
     })
   } catch (error) {
-    console.error('Full error details:', {
-      message: error.message,
-      stack: error.stack,
-      cause: error.cause
-    })
-    
+    console.error('Full error details:', error)
     return new Response(
       JSON.stringify({
         error: 'There was an error processing your request',
-        details: error.message,
-        stack: error.stack
+        details: error.message
       }),
       {
         status: 500,
