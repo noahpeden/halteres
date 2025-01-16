@@ -95,7 +95,7 @@ export default function EntityProgramsPage() {
     fetchEntityDetails()
     fetchPrograms()
   }, [user?.id, entityId])
-  console.log(programs)
+
   return (
     <View className="flex-1 bg-background">
       <ScrollView
