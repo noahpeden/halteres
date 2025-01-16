@@ -29,7 +29,7 @@ async function* generateWorkoutWeek(
   previousWeeks: string,
   similarWorkoutsContext: string
 ) {
-  const weekStartDate = new Date(entityData.sessionDetails.startDate)
+  const weekStartDate = new Date(entityData.programSchedule.startDate)
   weekStartDate.setDate(weekStartDate.getDate() + (weekNumber - 1) * 7)
   
   const weekEndDate = new Date(weekStartDate)
@@ -55,7 +55,7 @@ async function* generateWorkoutWeek(
           content: `
           PROGRAM DETAILS:
           - Duration: ${totalWeeks} weeks
-          - Workouts per Week: ${entityData.sessionDetails?.schedule.length}
+          - Workouts per Week: ${entityData.programSchedule?.schedule.length}
           
           INSTRUCTIONS:
           1. Generate Week ${weekNumber} of ${totalWeeks}. Current week dates: ${weekStartDate.toISOString().split('T')[0]} to ${weekEndDate.toISOString().split('T')[0]}
@@ -66,8 +66,8 @@ async function* generateWorkoutWeek(
           PROGRAM REQUIREMENTS:
           1. Training Styles: ${formatValue(entityData.workoutFormat?.format)}
           2. Focus Areas: ${formatValue(entityData.workoutFormat?.focus)}
-          3. Workout Schedule: ${formatValue(entityData.sessionDetails?.schedule)}
-          4. Session Duration: ${entityData.sessionDetails?.sessionDuration} minutes
+          3. Workout Schedule: ${formatValue(entityData.programSchedule?.schedule)}
+          4. Session Duration: ${entityData.programSchedule?.sessionDuration} minutes
           5. Program Instructions: ${entityData.workoutFormat?.instructions || 'None provided'}
           6. Equipment Available: ${entityData.gymDetails?.equipment || 'Standard Gym'}
           

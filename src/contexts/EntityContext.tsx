@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext } from 'react'
 export const seedEntityData = {
   programName: 'CrossFit Strength Focus',
-  sessionDetails: {
+  programSchedule: {
     length: '60 minutes',
     startDate: '',
     endDate: '',
@@ -23,7 +23,7 @@ export const seedEntityData = {
 
 export type EntityData = {
   programName: string
-  sessionDetails: {
+  programSchedule: {
     length: string
     startDate: string
     endDate: string

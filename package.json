@@ -1,5 +1,5 @@
 {
-  "name": "expo-router-typescript",
+  "name": "halteres",
   "scripts": {
     "build:android": "npx eas-cli build -p android --profile preview --local",
     "build:ios": "npx eas-cli build -p ios --profile preview --local",

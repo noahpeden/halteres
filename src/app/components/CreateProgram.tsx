@@ -15,7 +15,7 @@ export default function CreateProgram() {
   }
 
   const handleNext = () => {
-    router.push('/entities/SessionDetails')
+    router.push('/entities/ProgramSchedule')
   }
 
   return (

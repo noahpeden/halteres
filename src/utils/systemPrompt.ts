@@ -3,14 +3,14 @@
 import { EntityData } from 'src/contexts/EntityContext' // Import your context type if you have it defined
 
 export const systemPrompt = (entityData: EntityData) => `
-  As a functional fitness coach, create a comprehensive ${entityData.sessionDetails.length || '30'}-day workout plan tailored to a ${
+  As a functional fitness coach, create a comprehensive ${entityData.programSchedule.length || '30'}-day workout plan tailored to a ${
     entityData.programName || 'functional fitness enthusiast'
   }. Follow this structure for each day's workout:
 
   Start with a detailed Intro to the entire program of workouts, including what the focus is (${
     entityData.workoutFormat.focus || 'General Fitness'
   }), the length of the program (${
-    entityData.sessionDetails.length || '30 days'
+    entityData.programSchedule.length || '30 days'
   }), and the intended outcomes for the ${entityData.programName || 'athlete'}.
 
   1. Title: Create a unique, engaging title for each workout.
@@ -44,7 +44,7 @@ export const systemPrompt = (entityData: EntityData) => `
   - Make sure there is variety in movements and time domains.
   - Include benchmark workouts and retests to track progress at the beginning and end of the program.
   - Integrate any template workouts provided as primary influences.
-  - Generate exactly ${entityData.sessionDetails.length || '30'} unique workouts.
+  - Generate exactly ${entityData.programSchedule.length || '30'} unique workouts.
   - Include specific stretches and cool-down movements if requested in the workout format.
   - Ensure each day's workout is unique and specific, avoiding repetitions or generic instructions.
   - Use RPE (Rate of Perceived Exertion) scales to guide intensity levels as well as percentages of max lifts.

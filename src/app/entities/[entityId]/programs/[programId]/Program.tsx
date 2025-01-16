@@ -3,15 +3,16 @@ import { View, ScrollView, Text, SafeAreaView } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from 'src/contexts/AuthContext'
 import Button from 'src/app/components/ui/Button'
-import SessionDetails from 'src/app/components/SessionDetails'
+import ProgramSchedule from 'src/app/components/ProgramSchedule'
 import ProgramGeneration from 'src/app/components/ProgramGeneration'
 import ProgramOverview from 'src/app/components/ProgramOverview'
 import WorkoutFormat from 'src/app/components/WorkoutFormat'
 import GymDetails from 'src/app/components/GymDetails'
+import CollapsibleSection from 'src/app/components/ui/CollapsibleSection'
 
-export default function CreateProgram() {
+export default function Program() {
   const [program, setProgram] = useState({
-    sessionDetails: {
+    programSchedule: {
       startDate: '',
       endDate: '',
       schedule: [],
@@ -71,7 +72,7 @@ export default function CreateProgram() {
       }
 
       setProgram({
-        sessionDetails: {
+        programSchedule: {
           startDate: data.session_details?.startDate || '',
           endDate: data.session_details?.endDate || '',
           schedule: data.session_details?.schedule || [],
@@ -116,14 +117,14 @@ export default function CreateProgram() {
     try {
       const { data: existingProgram } = await supabase.from('programs').select('entity_id').eq('id', programId).single()
       const updates = {
-        session_details: program.sessionDetails,
+        session_details: program.programSchedule,
         program_overview: program.programOverview,
         workout_format: program.workoutFormat,
         gym_details: program.gymDetails,
         generated_program: generatedProgramText,
         name: program.programOverview?.name || '',
         description: program.programOverview?.description || '',
-        duration_weeks: program.sessionDetails.duration_weeks || program.duration_weeks || 0,
+        duration_weeks: program.programSchedule.duration_weeks || program.duration_weeks || 0,
         focus_area: JSON.stringify(program.workoutFormat?.focus || []),
         entity_id: existingProgram?.entity_id
       }
@@ -161,27 +162,33 @@ export default function CreateProgram() {
               data={program.programOverview}
               onChange={(updatedOverview) => setProgram((prev) => ({ ...prev, programOverview: updatedOverview }))}
             />
-            <SessionDetails
-              data={{
-                ...program.sessionDetails,
-                duration_weeks: program.duration_weeks // Make sure we pass the correct field
-              }}
-              onChange={(updatedSessionDetails) =>
-                setProgram((prev) => ({
-                  ...prev,
-                  sessionDetails: updatedSessionDetails,
-                  duration_weeks: updatedSessionDetails.duration_weeks // Update both places
-                }))
-              }
-            />
-            <WorkoutFormat
-              data={program.workoutFormat}
-              onChange={(updatedWorkoutFormat) => setProgram((prev) => ({ ...prev, workoutFormat: updatedWorkoutFormat }))}
-            />
-            <GymDetails
-              data={program.gymDetails}
-              onChange={(updatedGymDetails) => setProgram((prev) => ({ ...prev, gymDetails: updatedGymDetails }))}
-            />
+            <CollapsibleSection title="Program Schedule">
+              <ProgramSchedule
+                data={{
+                  ...program.programSchedule,
+                  duration_weeks: program.duration_weeks // Make sure we pass the correct field
+                }}
+                onChange={(updatedProgramSchedule) =>
+                  setProgram((prev) => ({
+                    ...prev,
+                    programSchedule: updatedProgramSchedule,
+                    duration_weeks: updatedProgramSchedule.duration_weeks // Update both places
+                  }))
+                }
+              />
+            </CollapsibleSection>
+            <CollapsibleSection title="Workout Format">
+              <WorkoutFormat
+                data={program.workoutFormat}
+                onChange={(updatedWorkoutFormat) => setProgram((prev) => ({ ...prev, workoutFormat: updatedWorkoutFormat }))}
+              />
+            </CollapsibleSection>
+            <CollapsibleSection title={'Gym Details'}>
+              <GymDetails
+                data={program.gymDetails}
+                onChange={(updatedGymDetails) => setProgram((prev) => ({ ...prev, gymDetails: updatedGymDetails }))}
+              />
+            </CollapsibleSection>
             <ProgramGeneration
               programData={program}
               setLoading={setLoading}

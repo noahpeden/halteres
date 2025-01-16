@@ -64,7 +64,7 @@ export default function Card({ item, type, onDelete, entityId }: CardProps) {
 
       <View className="flex-row items-center gap-2">
         <TouchableOpacity className="px-4 py-2 rounded-lg bg-primary-light" onPress={() => router.push(getNavigationPath())}>
-          <Text className="text-primary font-semibold">{type === 'entity' ? 'Edit' : 'View'}</Text>
+          <Text className="text-primary font-semibold">{type === 'entity' ? 'View' : 'View and Edit'}</Text>
         </TouchableOpacity>
         <AlertDialog>
           <AlertDialogTrigger asChild>

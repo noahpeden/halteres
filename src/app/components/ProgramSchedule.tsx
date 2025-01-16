@@ -6,7 +6,7 @@ import { ChevronDown } from 'lucide-react-native'
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MAX_WEEKS = 6
 
-export default function SessionDetails({ data, onChange }) {
+export default function ProgramSchedule({ data, onChange }) {
   const [showCalendar, setShowCalendar] = useState(false)
   const [showWeeksDropdown, setShowWeeksDropdown] = useState(false)
   const [selectedDays, setSelectedDays] = useState(data.schedule || [])
