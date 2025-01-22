@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native'
+import { View, Text, ScrollView, Alert } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from 'src/contexts/AuthContext'
 import Button from 'src/app/components/ui/Button'
 import Card from 'src/app/components/ui/Card'
+import ClientMetrics from 'src/app/components/ClientMetrics'
+import CollapsibleSection from 'src/app/components/ui/CollapsibleSection'
 
-export default function EntityProgramsPage() {
+export default function Entity() {
   const [programs, setPrograms] = useState([])
   const [loading, setLoading] = useState(false)
   const { supabase, user } = useAuth()
@@ -15,7 +17,11 @@ export default function EntityProgramsPage() {
 
   async function fetchEntityDetails() {
     setLoading(true)
-    const { data, error } = await supabase.from('entities').select('*').eq('id', entityId).single()
+    const { data, error } = await supabase
+      .from('entities')
+      .select('*, gender, height_cm, weight_kg, bench_1rm, squat_1rm, deadlift_1rm, mile_time')
+      .eq('id', entityId)
+      .single()
 
     if (error) {
       console.error('Error fetching entity:', error)
@@ -38,7 +44,26 @@ export default function EntityProgramsPage() {
     setLoading(false)
   }
 
-  async function deleteProgram(programId: string) {
+  async function updateEntityMetrics(updatedMetrics) {
+    setLoading(true)
+    try {
+      const { error } = await supabase.from('entities').update(updatedMetrics).eq('id', entityId)
+
+      if (error) {
+        throw error
+      }
+
+      Alert.alert('Success', 'Client metrics updated successfully.')
+      fetchEntityDetails() // Refresh entity details
+    } catch (error) {
+      console.error('Error updating metrics:', error)
+      Alert.alert('Error', 'Failed to update client metrics.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function deleteProgram(programId) {
     Alert.alert('Delete Program', 'Are you sure you want to delete this program? This action cannot be undone.', [
       {
         text: 'Cancel',
@@ -54,8 +79,7 @@ export default function EntityProgramsPage() {
             console.error('Error deleting program:', error)
             Alert.alert('Error', 'Failed to delete program')
           } else {
-            // Refresh programs list after deletion
-            fetchPrograms()
+            fetchPrograms() // Refresh programs list after deletion
           }
         }
       }
@@ -81,7 +105,6 @@ export default function EntityProgramsPage() {
         throw error
       }
 
-      // Navigate to the new program
       router.push(`/entities/${entityId}/programs/${data.id}`)
     } catch (error) {
       console.error('Error creating program:', error)
@@ -98,10 +121,7 @@ export default function EntityProgramsPage() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }} // Add padding at bottom
-      >
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
         {loading ? (
           <View className="flex-1 justify-center items-center">
             <Text className="text-gray-500">Loading...</Text>
@@ -112,6 +132,25 @@ export default function EntityProgramsPage() {
               <Text className="text-lg font-bold">{entity?.name || 'Entity Details'}</Text>
               <Text className="text-sm text-gray-600">{entity?.description || 'No description provided.'}</Text>
             </View>
+
+            {entity && (
+              <View className="mb-8">
+                <CollapsibleSection title="Client Metrics">
+                  <ClientMetrics
+                    data={{
+                      gender: entity.gender,
+                      height_cm: entity.height_cm,
+                      weight_kg: entity.weight_kg,
+                      bench_1rm: entity.bench_1rm,
+                      squat_1rm: entity.squat_1rm,
+                      deadlift_1rm: entity.deadlift_1rm,
+                      mile_time: entity.mile_time
+                    }}
+                    onSave={updateEntityMetrics}
+                  />
+                </CollapsibleSection>
+              </View>
+            )}
 
             <View className="mb-8">
               <Text className="text-lg font-bold mb-4">Programs</Text>

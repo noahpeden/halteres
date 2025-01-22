@@ -41,52 +41,108 @@ async function* generateWorkoutWeek(
       'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'developer',
-          content: `You are a professional fitness coach creating detailed, personalized workout programs. 
-          You are currently generating Week ${weekNumber} of ${totalWeeks}. Consider the previous weeks' workouts
-          for proper progression and variation.`
+  body: JSON.stringify({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'developer',
+        content: `You are a professional fitness coach creating detailed, personalized workout programs.
+        Each workout should be tailored to the client's metrics:
+
+        CLIENT METRICS:
+        - Gender: ${entityData.gender}
+        - Height: ${entityData.height_cm}cm
+        - Weight: ${entityData.weight_kg}kg
+        - Bench 1RM: ${entityData.bench_1rm}kg
+        - Squat 1RM: ${entityData.squat_1rm}kg
+        - Deadlift 1RM: ${entityData.deadlift_1rm}kg
+        - Mile Time: ${formatValue(entityData.mile_time)}
+
+        MOVEMENT STANDARDS:
+        For each weighted movement, provide:
+        1. Exact weight based on client's 1RM percentages
+        2. RPE target (1-10 scale)
+        3. Rest periods
+        4. Movement progression/regression options
+
+        Example format:
+        Dumbbell Bench Press
+        ♀ RX: 20kg (65% 1RM) @ RPE 7-8
+        ♂ RX: 30kg (65% 1RM) @ RPE 7-8
+        Rest: 90s between sets
+        Progression: Increase weight by 2.5kg when RPE drops below 7
+        Regression: Reduce weight by 10% if unable to maintain form
+
+        You are currently generating Week ${weekNumber} of ${totalWeeks}. Each workout should include clear RX and scaled options, with specific weights and RPE for both men and women. Consider the previous weeks' workouts for proper progression and variation.`
         },
-        {
-          role: 'user',
-          content: `
-          PROGRAM DETAILS:
-          - Duration: ${totalWeeks} weeks
-          - Workouts per Week: ${entityData.programSchedule?.schedule.length}
-          
-          INSTRUCTIONS:
-          1. Generate Week ${weekNumber} of ${totalWeeks}. Current week dates: ${weekStartDate.toISOString().split('T')[0]} to ${weekEndDate.toISOString().split('T')[0]}
-          2. Each day must be written out completely, with no summarizing
-          3. Include date, title, focus areas, warmup, main workout (sets/reps/rest), and cooldown
-          4. Account for equipment availability, injuries, and skill levels
-          
-          PROGRAM REQUIREMENTS:
-          1. Training Styles: ${formatValue(entityData.workoutFormat?.format)}
-          2. Focus Areas: ${formatValue(entityData.workoutFormat?.focus)}
-          3. Workout Schedule: ${formatValue(entityData.programSchedule?.schedule)}
-          4. Session Duration: ${entityData.programSchedule?.sessionDuration} minutes
-          5. Program Instructions: ${entityData.workoutFormat?.instructions || 'None provided'}
-          6. Equipment Available: ${entityData.gymDetails?.equipment || 'Standard Gym'}
-          
-          MEDICAL CONSIDERATIONS:
-          ${entityData.workoutFormat?.quirks || 'None reported'}
-          
-          PREVIOUS WEEKS:
-          ${previousWeeks}
-          
-          SIMILAR WORKOUTS FOR REFERENCE:
-          ${similarWorkoutsContext}
-          
-          Create detailed workouts for Week ${weekNumber}, ensuring proper progression from previous weeks.`
-        }
-      ],
-      temperature: 0.7,
-      stream: true
-    })
+      {
+        role: 'user',
+        content: `
+        PROGRAM DETAILS:
+        - Duration: ${totalWeeks} weeks
+        - Workouts per Week: ${entityData.programSchedule?.schedule.length}
+        
+        INSTRUCTIONS:
+        1. Generate Week ${weekNumber} of ${totalWeeks}. Current week dates: ${weekStartDate.toISOString().split('T')[0]} to ${weekEndDate.toISOString().split('T')[0]}
+        2. Each day must be written out completely, with no summarizing
+        3. Include date, title, focus areas, warmup, main workout (sets/reps/rest), and cooldown
+        4. Account for equipment availability, injuries, and skill levels
+        5. Each workout must follow this exact format:
+
+        [Workout Title]
+        
+        [Brief description of the workout]
+
+        [Main workout format, e.g., "3 rounds for time of:"]
+        [List movements and reps]
+
+        [Any special instructions for movement setup]
+
+        ♀ [Women's RX weights/heights/etc]
+        ♂ [Men's RX weights/heights/etc]
+
+        Stimulus and Strategy:
+        [Detailed explanation of the intended stimulus and strategies for success]
+        
+        RX:
+        [Full workout description with modified movements/weights]
+        ♀ [Women's intermediate weights/heights/etc]
+        ♂ [Men's intermediate weights/heights/etc]
+        
+        Scaling:
+        [General scaling principles and modifications]
+        [Movement-specific scaling options for different limitations]
+        [Injury considerations and substitutions]
+
+
+        Coaching cues:
+        [2-3 specific coaching points for key movements]
+        [Pacing guidance if applicable]
+        
+        PROGRAM REQUIREMENTS:
+        1. Training Styles: ${formatValue(entityData.workoutFormat?.format)}
+        2. Focus Areas: ${formatValue(entityData.workoutFormat?.focus)}
+        3. Workout Schedule: ${formatValue(entityData.programSchedule?.schedule)}
+        4. Session Duration: ${entityData.programSchedule?.sessionDuration} minutes
+        5. Program Instructions: ${entityData.workoutFormat?.instructions || 'None provided'}
+        6. Equipment Available: ${entityData.gymDetails?.equipment || 'Standard Gym'}
+        
+        MEDICAL CONSIDERATIONS:
+        ${entityData.workoutFormat?.quirks || 'None reported'}
+        
+        PREVIOUS WEEKS:
+        ${previousWeeks}
+        
+        SIMILAR WORKOUTS FOR REFERENCE:
+        ${similarWorkoutsContext}
+        
+        Create detailed workouts following the exact format above for Week ${weekNumber}, ensuring proper progression from previous weeks.`
+      }
+    ],
+    temperature: 0.7,
+    stream: true
   })
+})
 
   if (!chatResponse.ok) {
     throw new Error(`OpenAI Chat API error: ${await chatResponse.text()}`)

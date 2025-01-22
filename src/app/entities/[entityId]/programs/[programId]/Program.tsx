@@ -9,6 +9,7 @@ import ProgramOverview from 'src/app/components/ProgramOverview'
 import WorkoutFormat from 'src/app/components/WorkoutFormat'
 import GymDetails from 'src/app/components/GymDetails'
 import CollapsibleSection from 'src/app/components/ui/CollapsibleSection'
+import ClientMetrics from 'src/app/components/ClientMetrics'
 
 export default function Program() {
   const [program, setProgram] = useState({
@@ -54,68 +55,72 @@ export default function Program() {
 
     setLoading(true)
     try {
-      const { data, error } = await supabase.from('programs').select('*').eq('id', programId).single()
+      const { data: programData, error: programError } = await supabase.from('programs').select('*').eq('id', programId).single()
 
-      if (error) throw error
-      if (!data) return
+      if (programError) throw programError
 
-      // Parse focus area if it's a string
-      let parsedFocusArea = []
-      try {
-        if (typeof data.focus_area === 'string') {
-          parsedFocusArea = JSON.parse(data.focus_area)
-        } else if (Array.isArray(data.focus_area)) {
-          parsedFocusArea = data.focus_area
-        }
-      } catch (e) {
-        console.warn('Error parsing focus area:', e)
-      }
+      const { data: entityData, error: entityError } = await supabase
+        .from('entities')
+        .select('gender, height_cm, weight_kg, bench_1rm, squat_1rm, deadlift_1rm, mile_time')
+        .eq('id', programData.entity_id)
+        .single()
+
+      if (entityError) throw entityError
+
+      const parsedFocusArea = Array.isArray(programData.focus_area) ? programData.focus_area : JSON.parse(programData.focus_area || '[]')
 
       setProgram({
+        ...program,
         programSchedule: {
-          startDate: data.session_details?.startDate || '',
-          endDate: data.session_details?.endDate || '',
-          schedule: data.session_details?.schedule || [],
-          sessionDuration: data.session_details?.sessionDuration || '',
-          duration_weeks: data.duration_weeks || 0
+          startDate: programData.session_details?.startDate || '',
+          endDate: programData.session_details?.endDate || '',
+          schedule: programData.session_details?.schedule || [],
+          sessionDuration: programData.session_details?.sessionDuration || '',
+          duration_weeks: programData.duration_weeks || 0
         },
         programOverview: {
-          name: data.program_overview?.name || data.name || '',
-          description: data.program_overview?.description || data.description || ''
+          name: programData.program_overview?.name || programData.name || '',
+          description: programData.program_overview?.description || programData.description || ''
         },
         workoutFormat: {
-          format: data.workout_format?.format || [],
-          focus: data.workout_format?.focus || parsedFocusArea || [],
-          instructions: data.workout_format?.instructions || '',
-          quirks: data.workout_format?.quirks || '',
-          customFocus: data.workout_format?.customFocus || [],
-          customFormats: data.workout_format?.customFormats || []
+          format: programData.workout_format?.format || [],
+          focus: programData.workout_format?.focus || parsedFocusArea || [],
+          instructions: programData.workout_format?.instructions || '',
+          quirks: programData.workout_format?.quirks || '',
+          customFocus: programData.workout_format?.customFocus || [],
+          customFormats: programData.workout_format?.customFormats || []
         },
         gymDetails: {
-          equipment: data.gym_details?.equipment || '',
-          spaceDescription: data.gym_details?.spaceDescription || ''
+          equipment: programData.gym_details?.equipment || '',
+          spaceDescription: programData.gym_details?.spaceDescription || ''
         },
-        generatedProgram: data.generated_program || '',
-        name: data.name || '',
-        description: data.description || '',
-        duration_weeks: data.duration_weeks || 0,
+        generatedProgram: programData.generated_program || '',
+        name: programData.name || '',
+        description: programData.description || '',
+        duration_weeks: programData.duration_weeks || 0,
         focus_area: parsedFocusArea || [],
-        entity_id: data.entity_id || ''
+        entity_id: programData.entity_id || '',
+        clientMetrics: {
+          gender: entityData.gender,
+          height_cm: entityData.height_cm,
+          weight_kg: entityData.weight_kg,
+          bench_1rm: entityData.bench_1rm,
+          squat_1rm: entityData.squat_1rm,
+          deadlift_1rm: entityData.deadlift_1rm,
+          mile_time: entityData.mile_time
+        }
       })
-      console.log(data.generated_program)
     } catch (error) {
-      console.error('Error in fetchProgramDetails:', error)
+      console.error('Error fetching program details:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  console.log(program.duration_weeks)
   async function saveProgram(generatedProgramText: string) {
     if (!programId) return
 
     try {
-      const { data: existingProgram } = await supabase.from('programs').select('entity_id').eq('id', programId).single()
       const updates = {
         session_details: program.programSchedule,
         program_overview: program.programOverview,
@@ -125,17 +130,32 @@ export default function Program() {
         name: program.programOverview?.name || '',
         description: program.programOverview?.description || '',
         duration_weeks: program.programSchedule.duration_weeks || program.duration_weeks || 0,
-        focus_area: JSON.stringify(program.workoutFormat?.focus || []),
-        entity_id: existingProgram?.entity_id
+        focus_area: JSON.stringify(program.workoutFormat?.focus || [])
       }
 
-      const { error } = await supabase.from('programs').update(updates).eq('id', programId)
-      if (error) throw error
+      const { error: programError } = await supabase.from('programs').update(updates).eq('id', programId)
 
-      console.log('Program saved successfully')
-      router.push(`/entities/${existingProgram?.entity_id}`)
+      if (programError) throw programError
+
+      const { error: entityError } = await supabase
+        .from('entities')
+        .update({
+          gender: program.clientMetrics?.gender,
+          height_cm: program.clientMetrics?.height_cm,
+          weight_kg: program.clientMetrics?.weight_kg,
+          bench_1rm: program.clientMetrics?.bench_1rm,
+          squat_1rm: program.clientMetrics?.squat_1rm,
+          deadlift_1rm: program.clientMetrics?.deadlift_1rm,
+          mile_time: program.clientMetrics?.mile_time
+        })
+        .eq('id', program.entity_id)
+
+      if (entityError) throw entityError
+
+      console.log('Program and metrics saved successfully')
+      router.push(`/entities/${program.entity_id}`)
     } catch (error) {
-      console.error('Error saving program:', error)
+      console.error('Error saving program and metrics:', error)
     }
   }
 
@@ -162,6 +182,12 @@ export default function Program() {
               data={program.programOverview}
               onChange={(updatedOverview) => setProgram((prev) => ({ ...prev, programOverview: updatedOverview }))}
             />
+            <CollapsibleSection title="Client Metrics">
+              <ClientMetrics
+                data={program.clientMetrics}
+                onChange={(updatedMetrics) => setProgram((prev) => ({ ...prev, clientMetrics: { ...prev.clientMetrics, ...updatedMetrics } }))}
+              />
+            </CollapsibleSection>
             <CollapsibleSection title="Program Schedule">
               <ProgramSchedule
                 data={{

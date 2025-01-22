@@ -1,1 +1,1 @@
-export { default } from './EntityProgramsPage'
+export { default } from './Entity'
