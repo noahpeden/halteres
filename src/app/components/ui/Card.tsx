@@ -12,38 +12,68 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from 'src/app/components/ui/AlertDialog'
-import { View, Text, TouchableOpacity, Image } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 
-const PLACEHOLDER_AVATAR = '/api/placeholder/40/40'
-
-interface CardProps {
-  item: any
-  type: 'entity' | 'program'
-  onDelete: (id: string) => void
-  entityId?: string
+interface Entity {
+  id: string
+  user_id: string
+  name: string
+  description: string
+  created_at: string
+  updated_at: string
+  type: 'CLASS' | 'CLIENT'
+  bench_1rm: number | null
+  deadlift_1rm: number | null
+  squat_1rm: number | null
+  mile_time: number | null
+  gender: string | null
+  height_cm: number | null
+  weight_kg: number | null
 }
+
+interface Program {
+  id: string
+  name: string
+  description: string
+}
+
+interface BaseCardProps {
+  onDelete: (id: string) => Promise<void>
+}
+
+interface EntityCardProps extends BaseCardProps {
+  type: 'entity'
+  item: Entity
+}
+
+interface ProgramCardProps extends BaseCardProps {
+  type: 'program'
+  item: Program
+  entityId: string
+}
+
+type CardProps = EntityCardProps | ProgramCardProps
 
 export default function Card({ item, type, onDelete, entityId }: CardProps) {
   const getDescription = () => {
     if (type === 'entity') {
-      const memberCount = item?.details?.members?.length || 0
-      return typeof item?.description === 'string'
-        ? item?.description
-        : item?.type === 'CLASS'
-          ? `+${memberCount} members`
-          : `Client since ${new Date(item?.created_at).toLocaleDateString('en-US', {
+      return typeof item.description === 'string'
+        ? item.description
+        : item.type === 'CLASS'
+          ? 'Class'
+          : `Client since ${new Date(item.created_at).toLocaleDateString('en-US', {
               month: 'short',
               year: 'numeric'
             })}`
     }
-    return item?.description || 'No description available'
+    return item.description || 'No description available'
   }
 
   const getNavigationPath = () => {
     if (type === 'entity') {
-      return `/entities/${item?.id}`
+      return `/entities/${item.id}`
     }
-    return `/entities/${entityId}/programs/${item?.id}`
+    return `/entities/${entityId}/programs/${item.id}`
   }
 
   const getDeleteMessage = () => {
@@ -57,7 +87,7 @@ export default function Card({ item, type, onDelete, entityId }: CardProps) {
     <View className="flex-row items-center justify-between p-4 bg-white rounded-lg shadow-sm mb-4">
       <View className="flex-row items-center flex-1">
         <View className="flex-1">
-          <Text className="text-base font-semibold text-text-primary mb-0.5">{item?.name}</Text>
+          <Text className="text-base font-semibold text-text-primary mb-0.5">{item.name}</Text>
           <Text className="text-sm text-text-secondary">{getDescription()}</Text>
         </View>
       </View>
@@ -74,7 +104,7 @@ export default function Card({ item, type, onDelete, entityId }: CardProps) {
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete {item?.name}?</AlertDialogTitle>
+              <AlertDialogTitle>Delete {item.name}?</AlertDialogTitle>
               <AlertDialogDescription>{getDeleteMessage()}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

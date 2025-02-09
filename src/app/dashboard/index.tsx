@@ -5,8 +5,26 @@ import EntityCard from 'src/app/components/ui/Card'
 import Button from 'src/app/components/ui/Button'
 import { useAuth } from 'src/contexts/AuthContext'
 
+// Add interface for Entity type
+interface Entity {
+  id: string
+  user_id: string
+  name: string
+  description: string
+  created_at: string
+  updated_at: string
+  type: 'CLASS' | 'CLIENT'
+  bench_1rm: number | null
+  deadlift_1rm: number | null
+  squat_1rm: number | null
+  mile_time: number | null
+  gender: string | null
+  height_cm: number | null
+  weight_kg: number | null
+}
+
 export default function Dashboard() {
-  const [entities, setEntities] = useState([])
+  const [entities, setEntities] = useState<Entity[]>([])
   const [loading, setLoading] = useState(false)
   const { supabase, user } = useAuth()
 
@@ -26,7 +44,7 @@ export default function Dashboard() {
     fetchEntities()
   }, [user?.id])
 
-  async function deleteEntity(id) {
+  async function deleteEntity(id: string) {
     const { error } = await supabase.from('entities').delete().eq('id', id)
 
     if (error) {
@@ -35,6 +53,7 @@ export default function Dashboard() {
       fetchEntities()
     }
   }
+  console.log(entities)
 
   const classes = entities.filter((entity) => entity.type === 'CLASS')
   const clients = entities.filter((entity) => entity.type === 'CLIENT')
@@ -53,7 +72,7 @@ export default function Dashboard() {
               <View className="mb-8">
                 <Text className="text-md font-bold mb-4">Classes</Text>
                 {classes.map((entity) => (
-                  <EntityCard key={entity.id} entity={entity} deleteEntity={deleteEntity} />
+                  <EntityCard key={entity.id} type="entity" item={entity} onDelete={deleteEntity} />
                 ))}
               </View>
             )}
@@ -61,7 +80,7 @@ export default function Dashboard() {
               <View>
                 <Text className="text-md font-bold mb-4">Clients</Text>
                 {clients.map((entity) => (
-                  <EntityCard key={entity.id} entity={entity} deleteEntity={deleteEntity} />
+                  <EntityCard key={entity.id} type="entity" item={entity} onDelete={deleteEntity} />
                 ))}
               </View>
             )}

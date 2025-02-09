@@ -2,15 +2,42 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native'
 import WorkoutProgramDisplay from './GenerationDisplay'
 
+interface ProgramData {
+  clientMetrics: {
+    gender: string
+    height_cm: number | null
+    weight_kg: number | null
+    bench_1rm: number | null
+    squat_1rm: number | null
+    deadlift_1rm: number | null
+    mile_time: number | null
+  }
+  programSchedule: {
+    startDate: string
+    endDate: string
+    schedule: string[]
+    sessionDuration: string
+    duration_weeks: number
+  }
+}
+
 interface ProgramGenerationProps {
-  programData: any
+  programData: ProgramData
   setLoading: React.Dispatch<React.SetStateAction<boolean>>
   loading: boolean
   onProgramGenerated: (text: string) => void
   initialProgram?: string
+  entityId: string
 }
 
-const ProgramGeneration: React.FC<ProgramGenerationProps> = ({ programData, setLoading, loading, onProgramGenerated, initialProgram = '' }) => {
+const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
+  programData,
+  setLoading,
+  loading,
+  onProgramGenerated,
+  initialProgram = '',
+  entityId
+}) => {
   const [generatedProgram, setGeneratedProgram] = useState(initialProgram)
   const [currentWeek, setCurrentWeek] = useState<number>(0)
   const [totalWeeks, setTotalWeeks] = useState<number>(0)
@@ -61,6 +88,12 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({ programData, setL
   }
 
   const generateProgram = async () => {
+    if (!entityId) {
+      console.error('Missing entity ID')
+      setGeneratedProgram('Error: Missing entity ID. Please try again.')
+      return
+    }
+
     setLoading(true)
     setGeneratedProgram('')
     setCurrentWeek(0)
@@ -74,7 +107,19 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({ programData, setL
           'Content-Type': 'application/json',
           Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
         },
-        body: JSON.stringify({ entityData: programData })
+        body: JSON.stringify({
+          entityData: {
+            ...programData,
+            gender: programData.clientMetrics.gender,
+            height_cm: programData.clientMetrics.height_cm,
+            weight_kg: programData.clientMetrics.weight_kg,
+            bench_1rm: programData.clientMetrics.bench_1rm,
+            squat_1rm: programData.clientMetrics.squat_1rm,
+            deadlift_1rm: programData.clientMetrics.deadlift_1rm,
+            mile_time: programData.clientMetrics.mile_time,
+            entity_id: entityId
+          }
+        })
       })
 
       if (!response.ok) {

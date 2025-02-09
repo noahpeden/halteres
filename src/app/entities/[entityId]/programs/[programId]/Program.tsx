@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, ScrollView, Text, SafeAreaView } from 'react-native'
+import { View, Text, SafeAreaView } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from 'src/contexts/AuthContext'
 import Button from 'src/app/components/ui/Button'
@@ -9,7 +9,6 @@ import ProgramOverview from 'src/app/components/ProgramOverview'
 import WorkoutFormat from 'src/app/components/WorkoutFormat'
 import GymDetails from 'src/app/components/GymDetails'
 import CollapsibleSection from 'src/app/components/ui/CollapsibleSection'
-import ClientMetrics from 'src/app/components/ClientMetrics'
 
 export default function Program() {
   const [program, setProgram] = useState({
@@ -36,6 +35,15 @@ export default function Program() {
       equipment: '',
       spaceDescription: ''
     },
+    clientMetrics: {
+      gender: '',
+      height_cm: null,
+      weight_kg: null,
+      bench_1rm: null,
+      squat_1rm: null,
+      deadlift_1rm: null,
+      mile_time: null
+    },
     generatedProgram: '',
     name: '',
     description: '',
@@ -48,7 +56,14 @@ export default function Program() {
   const { supabase, user } = useAuth()
   const router = useRouter()
   const { entityId, programId } = useLocalSearchParams()
-  console.log('Component params:', { entityId, programId })
+
+  if (!entityId || !programId) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text>Invalid program or entity ID</Text>
+      </View>
+    )
+  }
 
   async function fetchProgramDetails() {
     if (!programId) return
@@ -64,6 +79,15 @@ export default function Program() {
         .select('gender, height_cm, weight_kg, bench_1rm, squat_1rm, deadlift_1rm, mile_time')
         .eq('id', programData.entity_id)
         .single()
+      console.log({
+        gender: entityData.gender,
+        height_cm: entityData.height_cm,
+        weight_kg: entityData.weight_kg,
+        bench_1rm: entityData.bench_1rm,
+        squat_1rm: entityData.squat_1rm,
+        deadlift_1rm: entityData.deadlift_1rm,
+        mile_time: entityData.mile_time
+      })
 
       if (entityError) throw entityError
 
@@ -101,7 +125,7 @@ export default function Program() {
         focus_area: parsedFocusArea || [],
         entity_id: programData.entity_id || '',
         clientMetrics: {
-          gender: entityData.gender,
+          gender: entityData.gender || '',
           height_cm: entityData.height_cm,
           weight_kg: entityData.weight_kg,
           bench_1rm: entityData.bench_1rm,
@@ -175,61 +199,53 @@ export default function Program() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="flex-1">
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-          <View className="mb-24">
-            <ProgramOverview
-              data={program.programOverview}
-              onChange={(updatedOverview) => setProgram((prev) => ({ ...prev, programOverview: updatedOverview }))}
-            />
-            <CollapsibleSection title="Client Metrics">
-              <ClientMetrics
-                data={program.clientMetrics}
-                onChange={(updatedMetrics) => setProgram((prev) => ({ ...prev, clientMetrics: { ...prev.clientMetrics, ...updatedMetrics } }))}
-              />
-            </CollapsibleSection>
-            <CollapsibleSection title="Program Schedule">
-              <ProgramSchedule
-                data={{
-                  ...program.programSchedule,
-                  duration_weeks: program.duration_weeks // Make sure we pass the correct field
-                }}
-                onChange={(updatedProgramSchedule) =>
-                  setProgram((prev) => ({
-                    ...prev,
-                    programSchedule: updatedProgramSchedule,
-                    duration_weeks: updatedProgramSchedule.duration_weeks // Update both places
-                  }))
-                }
-              />
-            </CollapsibleSection>
-            <CollapsibleSection title="Workout Format">
-              <WorkoutFormat
-                data={program.workoutFormat}
-                onChange={(updatedWorkoutFormat) => setProgram((prev) => ({ ...prev, workoutFormat: updatedWorkoutFormat }))}
-              />
-            </CollapsibleSection>
-            <CollapsibleSection title={'Gym Details'}>
-              <GymDetails
-                data={program.gymDetails}
-                onChange={(updatedGymDetails) => setProgram((prev) => ({ ...prev, gymDetails: updatedGymDetails }))}
-              />
-            </CollapsibleSection>
-            <ProgramGeneration
-              programData={program}
-              setLoading={setLoading}
-              loading={loading}
-              onProgramGenerated={(text) => setProgram((prev) => ({ ...prev, generatedProgram: text }))}
-              initialProgram={program.generatedProgram}
-            />
-          </View>
-        </ScrollView>
+      <View className="mb-24">
+        <ProgramOverview
+          data={program.programOverview}
+          onChange={(updatedOverview) => setProgram((prev) => ({ ...prev, programOverview: updatedOverview }))}
+        />
 
-        <View className="absolute bottom-0 left-0 right-0 bg-background border-t border-gray-200 p-4">
-          <Button variant="primary" size="large" onPress={() => saveProgram(program.generatedProgram)}>
-            Save Program
-          </Button>
-        </View>
+        <CollapsibleSection title="Program Schedule">
+          <ProgramSchedule
+            data={{
+              ...program.programSchedule,
+              duration_weeks: program.duration_weeks // Make sure we pass the correct field
+            }}
+            onChange={(updatedProgramSchedule) =>
+              setProgram((prev) => ({
+                ...prev,
+                programSchedule: updatedProgramSchedule,
+                duration_weeks: updatedProgramSchedule.duration_weeks // Update both places
+              }))
+            }
+          />
+        </CollapsibleSection>
+        <CollapsibleSection title="Workout Format">
+          <WorkoutFormat
+            data={program.workoutFormat}
+            onChange={(updatedWorkoutFormat) => setProgram((prev) => ({ ...prev, workoutFormat: updatedWorkoutFormat }))}
+          />
+        </CollapsibleSection>
+        <CollapsibleSection title={'Gym Details'}>
+          <GymDetails
+            data={program.gymDetails}
+            onChange={(updatedGymDetails) => setProgram((prev) => ({ ...prev, gymDetails: updatedGymDetails }))}
+          />
+        </CollapsibleSection>
+        <ProgramGeneration
+          programData={program}
+          setLoading={setLoading}
+          loading={loading}
+          onProgramGenerated={(text) => setProgram((prev) => ({ ...prev, generatedProgram: text }))}
+          initialProgram={program.generatedProgram}
+          entityId={entityId as string}
+        />
+      </View>
+
+      <View className="absolute bottom-0 left-0 right-0 bg-background border-t border-gray-200 p-4">
+        <Button variant="primary" size="large" onPress={() => saveProgram(program.generatedProgram)}>
+          Save Program
+        </Button>
       </View>
     </SafeAreaView>
   )

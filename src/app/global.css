@@ -1,3 +1,20 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  .overflow-auto {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  html,
+  body,
+  #root,
+  [data-rn-provider] {
+    height: 100vh;
+    overflow-y: auto;
+  }
+}

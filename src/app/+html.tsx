@@ -7,11 +7,11 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-        <title>Expo Router Typescript</title>
+        <title>Halteres.ai</title>
 
         <link rel="canonical" href="https://halteres.ai" />
         {/* <link rel="image_src" href="https://halteres.ai/og-image.jpg" /> */}
-        <meta name="title" content="Expo Router Typescript" />
+        <meta name="title" content="Halteres" />
         <meta name="description" content="The number one workout programming app for professionals in the functional fitness community" />
         <meta name="robots" content="index, follow" />
         <meta
@@ -23,7 +23,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://halteres.ai" />
-        <meta property="og:title" content="Expo Router Typescript" />
+        <meta property="og:title" content="Halteres" />
         <meta property="og:description" content="The number one workout programming app for professionals in the functional fitness community" />
         {/* <meta property="og:image" content="https://halteres.ai/og-image.jpg" /> */}
         <meta property="twitter:card" content="summary_large_image" />
