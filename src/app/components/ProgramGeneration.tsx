@@ -41,6 +41,7 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
   const [generatedProgram, setGeneratedProgram] = useState(initialProgram)
   const [currentWeek, setCurrentWeek] = useState<number>(0)
   const [totalWeeks, setTotalWeeks] = useState<number>(0)
+  const [workoutProgress, setWorkoutProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
 
   useEffect(() => {
     if (initialProgram) {
@@ -96,9 +97,7 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
 
     setLoading(true)
     setGeneratedProgram('')
-    setCurrentWeek(0)
-    setTotalWeeks(0)
-    let fullContent = ''
+    let accumulatedContent = ''
 
     try {
       const response = await fetch('https://vrmuakouskjbabedjhoc.supabase.co/functions/v1/generate-workout', {
@@ -122,14 +121,58 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
         })
       })
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      if (!response.body) throw new Error('No response body')
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const content = line.slice(6).trim()
+
+            // Handle special cases first
+            if (content === '[DONE]') {
+              continue
+            }
+
+            try {
+              const data = JSON.parse(content)
+
+              if (data.type === 'progress') {
+                setCurrentWeek(data.week)
+                setTotalWeeks(data.totalWeeks)
+              } else if (data.type === 'workoutProgress') {
+                setWorkoutProgress({
+                  current: data.workout,
+                  total: data.totalWorkouts
+                })
+              } else if (data.type === 'content' && data.text) {
+                accumulatedContent += data.text
+                setGeneratedProgram(accumulatedContent)
+              } else if (data.choices?.[0]?.delta?.content) {
+                // Handle OpenAI streaming format
+                accumulatedContent += data.choices[0].delta.content
+                setGeneratedProgram(accumulatedContent)
+              }
+            } catch (e) {
+              // Handle non-JSON content (like [DONE])
+              if (content && content !== '[DONE]') {
+                console.warn('Non-JSON content received:', content)
+              }
+            }
+          }
+        }
       }
 
-      const text = await response.text()
-      fullContent = processStreamedContent(text)
-      setGeneratedProgram(fullContent)
-      onProgramGenerated(fullContent)
+      onProgramGenerated(accumulatedContent)
     } catch (error) {
       console.error('Error generating program:', error)
       setGeneratedProgram('Error generating program. Please try again.')
@@ -163,8 +206,8 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
             <ActivityIndicator size="large" color="#FF7F50" />
             <Text className="mt-4 text-gray-600 text-center">
               {totalWeeks > 0
-                ? `Generating Week ${currentWeek} of ${totalWeeks}...\nThis may take a few minutes`
-                : 'Generating your program...\nThis may take a few minutes'}
+                ? `Generating Week ${currentWeek} of ${totalWeeks}\nWorkout ${workoutProgress.current} of ${workoutProgress.total}`
+                : 'Starting program generation...'}
             </Text>
           </View>
         ) : (

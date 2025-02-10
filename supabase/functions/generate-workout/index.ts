@@ -27,15 +27,14 @@ function summarizePreviousWeeks(previousWeeks) {
   const summaries = weeks.map(weekContent => {
     const weekNumberMatch = weekContent.match(/Week (\d+)/)
     const focusMatch = weekContent.match(/Focus Areas:\s*(.*)/)
+    const workoutCount = (weekContent.match(/\[Day of Week\]/g) || []).length
     const weekNumber = weekNumberMatch ? weekNumberMatch[1] : 'Unknown'
-    const focus = focusMatch ? focusMatch[1] : 'Various'
-    return `Week ${weekNumber}: Focused on ${focus}.`
+    const focus = focusMatch ? focusMatch[1].split('\n')[0] : 'Various'
+    return `Week ${weekNumber}: ${workoutCount} workouts focusing on ${focus}.`
   })
   
-  // Limit to the last 2 weeks to keep the summary concise
-  const recentSummaries = summaries.slice(-2).join('\n')
-  
-  return recentSummaries
+  // Only keep last week's full context
+  return summaries.slice(-1).join('\n')
 }
 
 async function fetchWithRetry(url, options, retries = 3, backoff = 3000) {
@@ -62,7 +61,7 @@ async function fetchWithRetry(url, options, retries = 3, backoff = 3000) {
 async function* generateWorkoutWeek(
   weekNumber: number,
   totalWeeks: number,
-  entityData: any,
+  entityData: Record<string, any>,
   previousWeeks: string,
   similarWorkoutsContext: string
 ) {
@@ -71,12 +70,20 @@ async function* generateWorkoutWeek(
   
   const weekEndDate = new Date(weekStartDate)
   weekEndDate.setDate(weekEndDate.getDate() + 6)
-  console.log(`Generate Week ${weekNumber} of ${totalWeeks}. Current week dates: ${weekStartDate.toISOString().split('T')[0]} to ${weekEndDate.toISOString().split('T')[0]}`)
 
-  // Construct the prompt
+  const workoutsPerWeek = entityData.programSchedule.schedule.length
+  const workoutDays = entityData.programSchedule.schedule
+
   const prompt = `
-    You are a professional fitness coach creating detailed, personalized workout programs.
-    Each workout should be tailored to the client's metrics:
+    You are a professional fitness coach creating detailed, personalized workout programs based on the client's metrics, program overview, available equipment, restricted movements,and workout format.
+    You MUST generate EXACTLY ${workoutsPerWeek} workouts for this week (Week ${weekNumber}).
+    
+    STRICT OUTPUT REQUIREMENTS:
+    1. Generate exactly ${workoutsPerWeek} separate workouts
+    2. Each workout must be for one of these days: ${workoutDays.join(', ')}
+    3. Each workout must be complete with no placeholders or summaries
+    4. Each workout must follow the exact format specified below
+    5. Do not skip any days or combine workouts
 
     CLIENT METRICS:
     - Gender: ${entityData.clientMetrics.gender}
@@ -96,8 +103,7 @@ async function* generateWorkoutWeek(
 
     Example format:
     Dumbbell Bench Press
-    ♀ RX: 20kg (65% 1RM) @ RPE 7-8
-    ♂ RX: 30kg (65% 1RM) @ RPE 7-8
+    RX: 30kg (65% 1RM) @ RPE 7-8
     Rest: 90s between sets
     Progression: Increase weight by 2.5kg when RPE drops below 7
     Regression: Reduce weight by 10% if unable to maintain form
@@ -106,8 +112,17 @@ async function* generateWorkoutWeek(
   `
 
   const userContent = `
+    STRICT PROGRAM REQUIREMENTS:
+    1. Week Number: ${weekNumber} of ${totalWeeks}
+    2. Exact Number of Workouts Needed: ${workoutsPerWeek}
+    3. Workout Days: ${workoutDays.join(', ')}
+    4. Week Date Range: ${weekStartDate.toISOString().split('T')[0]} to ${weekEndDate.toISOString().split('T')[0]}
+    5. Session Duration: ${entityData.programSchedule?.sessionDuration} minutes per workout
+
     PROGRAM DETAILS:
-    - Duration: ${totalWeeks} weeks
+    - Program Name: ${entityData.programOverview?.name || 'Unnamed Program'}
+    - Program Description: Generate a brief description and overview of the program focusing on how the program will focus on ${entityData.workoutFormat?.focus} and ${entityData.workoutFormat?.format}.
+    - Duration: ${totalWeeks} weeks with starting date: ${entityData.programSchedule?.startDate} and ending date: ${entityData.programSchedule?.endDate}
     - Workouts per Week: ${entityData.programSchedule?.schedule.length}
     
     INSTRUCTIONS:
@@ -117,32 +132,34 @@ async function* generateWorkoutWeek(
     4. Account for equipment availability, injuries, and skill levels
     5. Each workout must follow this exact format:
 
+    [Day of Week] - [Date]
     [Workout Title]
     
-    [Brief description of the workout]
+    Focus Areas: [List specific focus areas and brief description of the workout]
 
-    [Main workout format, e.g., "3 rounds for time of:"]
-    [List movements and reps]
+    Description: [Brief description]
 
-    [Any special instructions for movement setup]
-
-    ♀ [Women's RX weights/heights/etc]
-    ♂ [Men's RX weights/heights/etc]
-
-    Stimulus and Strategy:
-    [Detailed explanation of the intended stimulus and strategies for success]
     
-    RX:
-    [Full workout description with modified movements/weights]
-    ♀ [Women's intermediate weights/heights/etc]
-    ♂ [Men's intermediate weights/heights/etc]
+    Coach's Notes:
+    - Target: [Brief description of intended stimulus and goal of workout]
+    - Strategy: [Key points for success and pacing guidance]
+    - Rx Weights: Based on ${entityData.clientMetrics.gender}'s metrics (Bench: ${entityData.bench_1rm}kg, Squat: ${entityData.squat_1rm}kg, DL: ${entityData.deadlift_1rm}kg)
+    - Scaling Options: [Movement substitutions and weight/rep modifications]
     
-    Scaling:
-    [General scaling principles and modifications]
-    [Movement-specific scaling options for different limitations]
-    [Injury considerations and substitutions]
+    Workout Breakdown (${entityData.programSchedule?.sessionDuration} min total):
+    
+    1. Warmup (${Math.round(entityData.programSchedule?.sessionDuration * 0.15)} min):
+    [Specific warmup movements and mobility work]
+    
+    2. Main Work (${Math.round(entityData.programSchedule?.sessionDuration * 0.7)} min):
+    [Detailed workout with movements, loads, sets/reps]
+    [Include RPE targets and rest periods]
+    
+    3. Cooldown (${Math.round(entityData.programSchedule?.sessionDuration * 0.15)} min):
+    [Specific cooldown and recovery work]
 
-
+    YOU MUST GENERATE ALL ${workoutsPerWeek} WORKOUTS FOR THIS WEEK BEFORE MOVING TO THE NEXT WEEK.
+    
     Coaching cues:
     [2-3 specific coaching points for key movements]
     [Pacing guidance if applicable]
@@ -183,19 +200,20 @@ async function* generateWorkoutWeek(
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'o3-mini',
       messages: [
         {
           role: 'developer',
-          content: prompt
+          content: 'Formatting re-enabled\n' + prompt  // Enable markdown formatting
         },
         {
           role: 'user',
           content: userContent
         }
       ],
-      temperature: 0.7,
-      stream: true
+      reasoning_effort: 'high',  // Since we want detailed, accurate workouts
+      stream: true,
+      store: true  // Enable storing for potential future reference
     })
   })
 
@@ -232,8 +250,6 @@ async function* generateWorkoutWeek(
           const payload = JSON.parse(data)
           if (payload.choices?.[0]?.delta?.content) {
             const content = payload.choices[0].delta.content
-            // Log each chunk's content length
-            console.log(`Received chunk (characters): ${content.length}`)
             yield content
           }
         } catch (e) {
@@ -251,6 +267,13 @@ async function* generateWorkoutWeek(
     console.log(`Remaining buffer (characters): ${buffer.length}`)
     yield buffer
   }
+}
+
+// Update the workout detection logic
+const countWorkouts = (content: string): number => {
+  // Look for date headers in the format "Day - YYYY-MM-DD"
+  const dateHeaders = content.match(/[A-Za-z]+ - \d{4}-\d{2}-\d{2}/g) || []
+  return dateHeaders.length
 }
 
 Deno.serve(async (req) => {
@@ -288,7 +311,7 @@ Deno.serve(async (req) => {
       const keys = field.split('.')
       let value = entityData
       for (const key of keys) {
-        if (!value || !value.hasOwnProperty(key)) {
+        if (!value || !Object.prototype.hasOwnProperty.call(value, key)) {
           throw new Error(`Missing required field: ${field}`)
         }
         value = value[key]
@@ -364,60 +387,109 @@ Deno.serve(async (req) => {
     // Process weeks in the background
     const processWeeks = async () => {
       try {
-        const totalWeeks = Math.min(6, entityData.programSchedule.duration_weeks || 6) // Ensure at least 6 weeks
+        const totalWeeks = entityData.programSchedule.duration_weeks
+        if (!totalWeeks || totalWeeks <= 0) {
+          throw new Error('Invalid duration_weeks specified')
+        }
+        
+        console.log(`=== Starting Program Generation ===`)
+        console.log(`Total Weeks: ${totalWeeks}`)
+        console.log(`Workouts per Week: ${entityData.programSchedule.schedule.length}`)
+        console.log(`Schedule: ${entityData.programSchedule.schedule.join(', ')}`)
+        console.log(`Session Duration: ${entityData.programSchedule?.sessionDuration} minutes`)
+        
         let previousWeeks = ''
         
         for (let week = 1; week <= totalWeeks; week++) {
           try {
-            await writer.write(
-              encoder.encode(`data: \n\n--- Starting Week ${week} of ${totalWeeks} ---\n\n`)
-            )
-
-            let weekContent = ''
-            let lineBuffer = ''
+            console.log(`\n=== Processing Week ${week}/${totalWeeks} ===`)
+            console.log(`Previous weeks context length: ${previousWeeks.length} characters`)
             
-            for await (const chunk of generateWorkoutWeek(
-              week,
-              totalWeeks,
-              entityData,
-              previousWeeks,
-              similarWorkoutsContext
-            )) {
-              if (chunk) {
-                weekContent += chunk
-                lineBuffer += chunk
+            await writer.write(encoder.encode(`data: {"type":"progress","week":${week},"totalWeeks":${totalWeeks}}\n\n`))
+            
+            let retryCount = 0
+            let weekComplete = false
+
+            while (!weekComplete && retryCount < 3) {
+              try {
+                let workoutCount = 0
+                let weekContent = ''
+                let lineBuffer = ''
                 
-                // Send complete lines when we have them
-                if (lineBuffer.includes('\n')) {
-                  const lines = lineBuffer.split('\n')
-                  lineBuffer = lines.pop() || ''
-                  for (const line of lines) {
-                    await writer.write(encoder.encode(`data: ${line}\n`))
+                for await (const chunk of generateWorkoutWeek(
+                  week,
+                  totalWeeks,
+                  entityData,
+                  previousWeeks,
+                  similarWorkoutsContext
+                )) {
+                  if (chunk) {
+                    weekContent += chunk
+                    lineBuffer += chunk
+                    
+                    // Stream the content to the client immediately
+                    await writer.write(encoder.encode(`data: {"type":"content","text":${JSON.stringify(chunk)}}\n\n`))
+                    
+                    // Count workouts based on complete content
+                    const newWorkoutCount = countWorkouts(weekContent)
+                    if (newWorkoutCount > workoutCount) {
+                      workoutCount = newWorkoutCount
+                      await writer.write(
+                        encoder.encode(
+                          `data: {"type":"workoutProgress","week":${week},"workout":${workoutCount},"totalWorkouts":${entityData.programSchedule.schedule.length}}\n\n`
+                        )
+                      )
+                      console.log(`Week ${week}: Generated workout ${workoutCount}/${entityData.programSchedule.schedule.length}`)
+                    }
                   }
                 }
+
+                // Verify week completion
+                if (workoutCount === entityData.programSchedule.schedule.length) {
+                  weekComplete = true
+                  previousWeeks = summarizePreviousWeeks(weekContent)
+                  console.log(`✅ Week ${week} complete with ${workoutCount} workouts`)
+                } else {
+                  console.warn(`⚠️ Week ${week} incomplete - only generated ${workoutCount}/${entityData.programSchedule.schedule.length} workouts`)
+                  retryCount++
+                  await new Promise(res => setTimeout(res, 1000))
+                }
+              } catch (weekAttemptError) {
+                console.error(`❌ Attempt ${retryCount + 1} failed for week ${week}:`, weekAttemptError)
+                retryCount++
               }
             }
-            
-            // Send any remaining content
-            if (lineBuffer) {
-              await writer.write(encoder.encode(`data: ${lineBuffer}\n`))
+
+            if (!weekComplete) {
+              throw new Error(`Failed to generate complete week ${week} after ${retryCount} attempts`)
             }
-            
+
             // Summarize the current week's content
             const summarized = summarizePreviousWeeks(`--- Week ${week} ---\n${weekContent}\n--- End of Week ${week} ---`)
             previousWeeks += `\n\nWEEK ${week}:\n${summarized}`
             
             await writer.write(encoder.encode(`data: \n--- End of Week ${week} ---\n\n`))
+            
+            // After processing each week
+            console.log(`Week ${week} completion status:`)
+            console.log(`- Generated workouts: ${workoutCount}/${entityData.programSchedule.schedule.length}`)
+            console.log(`- Week content length: ${weekContent.length} characters`)
+            
+            if (workoutCount < entityData.programSchedule.schedule.length) {
+              console.warn(`⚠️ Warning: Week ${week} incomplete - missing ${entityData.programSchedule.schedule.length - workoutCount} workouts`)
+            }
           } catch (weekError) {
-            console.error(`Error processing week ${week}:`, weekError)
+            console.error(`❌ Error in Week ${week}:`, weekError)
             await writer.write(
-              encoder.encode(`data: Error generating week ${week}: ${weekError.message}\n\n`)
+              encoder.encode(`data: {"type":"error","week":${week},"message":"${weekError.message}"}\n\n`)
             )
-            continue
           }
         }
+        
+        console.log(`\n=== Program Generation Complete ===`)
       } catch (error) {
-        console.error('Fatal error in week processing:', error)
+        console.error(`❌ Fatal error in program generation:`, error)
+        console.error(`Stack trace:`, error.stack)
         await writer.write(
           encoder.encode(`data: Fatal error generating workouts: ${error.message}\n\n`)
         )
