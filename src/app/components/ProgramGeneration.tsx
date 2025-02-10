@@ -39,9 +39,19 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
   entityId
 }) => {
   const [generatedProgram, setGeneratedProgram] = useState(initialProgram)
-  const [currentWeek, setCurrentWeek] = useState<number>(0)
-  const [totalWeeks, setTotalWeeks] = useState<number>(0)
-  const [workoutProgress, setWorkoutProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
+  const [currentWeek, setCurrentWeek] = useState<number>(1)
+  const [totalWeeks, setTotalWeeks] = useState<number>(1)
+  const [workoutProgress, setWorkoutProgress] = useState<{
+    current: number
+    total: number
+    totalGenerated: number
+    totalProgram: number
+  }>({
+    current: 0,
+    total: 1,
+    totalGenerated: 0,
+    totalProgram: 1
+  })
 
   useEffect(() => {
     if (initialProgram) {
@@ -143,6 +153,16 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
               const data = JSON.parse(content)
               if (data.type === 'content' && data.text) {
                 setGeneratedProgram((prev) => prev + data.text)
+              } else if (data.type === 'progress') {
+                setCurrentWeek(data.week)
+                setTotalWeeks(data.totalWeeks)
+              } else if (data.type === 'workoutProgress') {
+                setWorkoutProgress({
+                  current: data.workout || 0,
+                  total: data.totalWorkouts || 1,
+                  totalGenerated: data.totalWorkoutsGenerated || 0,
+                  totalProgram: data.totalProgramWorkouts || 1
+                })
               }
             } catch (e) {
               // Only log real errors, not [DONE] messages
@@ -176,6 +196,54 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
           ? 'You can make edits to the program or regenerate it using the button below.'
           : 'Click the button below to generate your program.'}
       </Text>
+
+      {loading && (
+        <View className="mb-4 p-4 bg-gray-100 rounded-lg">
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-gray-700 font-medium">
+              Week {currentWeek} of {totalWeeks}
+            </Text>
+            <ActivityIndicator size="small" color="#f97316" />
+          </View>
+
+          {/* {workoutProgress.total > 0 && (
+            <View className="mt-2">
+              <View className="flex-row justify-between mb-1">
+                <Text className="text-gray-600 text-sm">
+                  Generating workout {workoutProgress.current} of {workoutProgress.total}
+                </Text>
+                <Text className="text-gray-600 text-sm">{Math.round((workoutProgress.current / workoutProgress.total) * 100)}%</Text>
+              </View>
+              <View className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
+                <View
+                  className="h-full bg-orange-500 rounded-full"
+                  style={{
+                    width: `${(workoutProgress.current / workoutProgress.total) * 100}%`
+                  }}
+                />
+              </View>
+            </View>
+          )} */}
+
+          <View className="mt-2">
+            <View className="flex-row justify-between mb-1">
+              <Text className="text-gray-600 text-sm">Overall Progress</Text>
+              <Text className="text-gray-600 text-sm">
+                {Math.max(0, Math.min(100, Math.round((workoutProgress.totalGenerated / workoutProgress.totalProgram) * 100)))}%
+              </Text>
+            </View>
+            <View className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
+              <View
+                className="h-full bg-blue-500 rounded-full"
+                style={{
+                  width: `${Math.max(0, Math.min(100, (workoutProgress.totalGenerated / workoutProgress.totalProgram) * 100))}%`
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      )}
+
       <TouchableOpacity className={`p-4 rounded-lg ${loading ? 'bg-gray-400' : 'bg-orange-500'}`} onPress={generateProgram} disabled={loading}>
         <Text className="text-center text-white font-semibold">
           {loading ? 'Generating...' : generatedProgram ? 'Regenerate Program' : 'Generate Program'}
