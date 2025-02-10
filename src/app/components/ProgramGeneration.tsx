@@ -40,7 +40,7 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
 }) => {
   const [generatedProgram, setGeneratedProgram] = useState(initialProgram)
   const [currentWeek, setCurrentWeek] = useState<number>(1)
-  const [totalWeeks, setTotalWeeks] = useState<number>(1)
+  const [totalWeeks, setTotalWeeks] = useState<number>(programData.programSchedule.duration_weeks || 1)
   const [workoutProgress, setWorkoutProgress] = useState<{
     current: number
     total: number
@@ -48,9 +48,9 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
     totalProgram: number
   }>({
     current: 0,
-    total: 1,
+    total: programData.programSchedule.schedule.length || 1,
     totalGenerated: 0,
-    totalProgram: 1
+    totalProgram: programData.programSchedule.duration_weeks * programData.programSchedule.schedule.length || 1
   })
 
   useEffect(() => {
@@ -58,45 +58,6 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
       setGeneratedProgram(initialProgram)
     }
   }, [initialProgram])
-
-  const processStreamedContent = (text: string) => {
-    const lines = text.split('\n')
-    let accumulatedContent = ''
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const content = line.slice(6).trim()
-
-        // Handle week markers
-        if (content.match(/Week \d+ of \d+:/)) {
-          const match = content.match(/Week (\d+) of (\d+):/)
-          if (match) {
-            setCurrentWeek(parseInt(match[1]))
-            setTotalWeeks(parseInt(match[2]))
-          }
-          continue
-        }
-
-        // Handle [DONE] message
-        if (content === '[DONE]') {
-          continue
-        }
-
-        try {
-          // Try to parse as JSON first (for OpenAI streaming format)
-          const data = JSON.parse(content)
-          if (data.choices?.[0]?.delta?.content) {
-            accumulatedContent += data.choices[0].delta.content
-          }
-        } catch (e) {
-          // If not JSON, treat as raw content
-          accumulatedContent += content + '\n'
-        }
-      }
-    }
-
-    return accumulatedContent
-  }
 
   const generateProgram = async () => {
     if (!entityId) {
@@ -201,7 +162,7 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
         <View className="mb-4 p-4 bg-gray-100 rounded-lg">
           <View className="flex-row items-center justify-between mb-2">
             <Text className="text-gray-700 font-medium">
-              Week {currentWeek} of {totalWeeks}
+              Writing workouts for Week {currentWeek} of {totalWeeks}
             </Text>
             <ActivityIndicator size="small" color="#f97316" />
           </View>
@@ -225,7 +186,7 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
             </View>
           )} */}
 
-          <View className="mt-2">
+          {/* <View className="mt-2">
             <View className="flex-row justify-between mb-1">
               <Text className="text-gray-600 text-sm">Overall Progress</Text>
               <Text className="text-gray-600 text-sm">
@@ -240,7 +201,7 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
                 }}
               />
             </View>
-          </View>
+          </View> */}
         </View>
       )}
 

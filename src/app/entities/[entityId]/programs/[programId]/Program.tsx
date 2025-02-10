@@ -177,7 +177,6 @@ export default function Program() {
       if (entityError) throw entityError
 
       console.log('Program and metrics saved successfully')
-      router.push(`/entities/${program.entity_id}`)
     } catch (error) {
       console.error('Error saving program and metrics:', error)
     }
