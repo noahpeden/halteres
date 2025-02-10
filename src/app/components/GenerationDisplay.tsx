@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, ScrollView, TouchableOpacity } from 'react-native'
 import { Edit2, Save } from 'lucide-react-native'
 
@@ -10,9 +10,13 @@ interface WorkoutProgramDisplayProps {
 const WorkoutProgramDisplay: React.FC<WorkoutProgramDisplayProps> = ({ programText, onProgramChange }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editedText, setEditedText] = useState(programText)
+  const scrollViewRef = useRef<ScrollView>(null)
 
   useEffect(() => {
     setEditedText(programText)
+    if (!isEditing) {
+      scrollViewRef.current?.scrollToEnd({ animated: true })
+    }
   }, [programText])
 
   const handleSave = () => {
@@ -41,7 +45,7 @@ const WorkoutProgramDisplay: React.FC<WorkoutProgramDisplayProps> = ({ programTe
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="p-4 max-h-[400px]">
+      <ScrollView ref={scrollViewRef} className="p-4 max-h-[400px]">
         {isEditing ? (
           <TextInput
             className="text-base leading-6"

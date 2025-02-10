@@ -269,11 +269,13 @@ async function* generateWorkoutWeek(
   }
 }
 
-// Update the workout detection logic
+// Update the workout detection logic to be more precise
 const countWorkouts = (content: string): number => {
-  // Look for date headers in the format "Day - YYYY-MM-DD"
-  const dateHeaders = content.match(/[A-Za-z]+ - \d{4}-\d{2}-\d{2}/g) || []
-  return dateHeaders.length
+  // Look for complete workout sections that start with a day and date
+  // This pattern matches the exact format we're generating
+  const workoutPattern = /\*\*${entityData.programOverview?.name || 'Program'}:.*?\n\n(?:(?!\*\*${entityData.programOverview?.name || 'Program'}:).)*?(?=\*\*${entityData.programOverview?.name || 'Program'}:|$)/gs
+  const matches = content.match(workoutPattern) || []
+  return matches.length
 }
 
 Deno.serve(async (req) => {
@@ -395,73 +397,65 @@ Deno.serve(async (req) => {
         console.log(`=== Starting Program Generation ===`)
         console.log(`Total Weeks: ${totalWeeks}`)
         console.log(`Workouts per Week: ${entityData.programSchedule.schedule.length}`)
-        console.log(`Schedule: ${entityData.programSchedule.schedule.join(', ')}`)
-        console.log(`Session Duration: ${entityData.programSchedule?.sessionDuration} minutes`)
+        
+        // Send initial progress with total weeks and workouts
+        await writer.write(
+          encoder.encode(
+            `data: {"type":"progress","week":1,"totalWeeks":${totalWeeks}}\n\n`
+          )
+        )
+        await writer.write(
+          encoder.encode(
+            `data: {"type":"workoutProgress","week":1,"workout":0,"totalWorkouts":${entityData.programSchedule.schedule.length}}\n\n`
+          )
+        )
         
         let previousWeeks = ''
         
         for (let week = 1; week <= totalWeeks; week++) {
           try {
             console.log(`\n=== Processing Week ${week}/${totalWeeks} ===`)
-            console.log(`Previous weeks context length: ${previousWeeks.length} characters`)
             
-            await writer.write(encoder.encode(`data: {"type":"progress","week":${week},"totalWeeks":${totalWeeks}}\n\n`))
+            let workoutCount = 0
+            let weekContent = ''
+            let lineBuffer = ''
             
-            let retryCount = 0
-            let weekComplete = false
-
-            while (!weekComplete && retryCount < 3) {
-              try {
-                let workoutCount = 0
-                let weekContent = ''
-                let lineBuffer = ''
+            for await (const chunk of generateWorkoutWeek(
+              week,
+              totalWeeks,
+              entityData,
+              previousWeeks,
+              similarWorkoutsContext
+            )) {
+              if (chunk) {
+                weekContent += chunk
+                lineBuffer += chunk
                 
-                for await (const chunk of generateWorkoutWeek(
-                  week,
-                  totalWeeks,
-                  entityData,
-                  previousWeeks,
-                  similarWorkoutsContext
-                )) {
-                  if (chunk) {
-                    weekContent += chunk
-                    lineBuffer += chunk
-                    
-                    // Stream the content to the client immediately
-                    await writer.write(encoder.encode(`data: {"type":"content","text":${JSON.stringify(chunk)}}\n\n`))
-                    
-                    // Count workouts based on complete content
-                    const newWorkoutCount = countWorkouts(weekContent)
-                    if (newWorkoutCount > workoutCount) {
-                      workoutCount = newWorkoutCount
-                      await writer.write(
-                        encoder.encode(
-                          `data: {"type":"workoutProgress","week":${week},"workout":${workoutCount},"totalWorkouts":${entityData.programSchedule.schedule.length}}\n\n`
-                        )
-                      )
-                      console.log(`Week ${week}: Generated workout ${workoutCount}/${entityData.programSchedule.schedule.length}`)
-                    }
-                  }
+                // Stream the content to the client immediately
+                await writer.write(encoder.encode(`data: {"type":"content","text":${JSON.stringify(chunk)}}\n\n`))
+                
+                // Count workouts based on complete content
+                const newWorkoutCount = countWorkouts(weekContent)
+                if (newWorkoutCount > workoutCount) {
+                  workoutCount = newWorkoutCount
+                  console.log(`✅ Found workout ${workoutCount} of ${entityData.programSchedule.schedule.length}`)
+                  await writer.write(
+                    encoder.encode(
+                      `data: {"type":"workoutProgress","week":${week},"workout":${workoutCount},"totalWorkouts":${entityData.programSchedule.schedule.length}}\n\n`
+                    )
+                  )
                 }
-
-                // Verify week completion
-                if (workoutCount === entityData.programSchedule.schedule.length) {
-                  weekComplete = true
-                  previousWeeks = summarizePreviousWeeks(weekContent)
-                  console.log(`✅ Week ${week} complete with ${workoutCount} workouts`)
-                } else {
-                  console.warn(`⚠️ Week ${week} incomplete - only generated ${workoutCount}/${entityData.programSchedule.schedule.length} workouts`)
-                  retryCount++
-                  await new Promise(res => setTimeout(res, 1000))
-                }
-              } catch (weekAttemptError) {
-                console.error(`❌ Attempt ${retryCount + 1} failed for week ${week}:`, weekAttemptError)
-                retryCount++
               }
             }
 
-            if (!weekComplete) {
-              throw new Error(`Failed to generate complete week ${week} after ${retryCount} attempts`)
+            // Verify week completion
+            if (workoutCount === entityData.programSchedule.schedule.length) {
+              weekComplete = true
+              previousWeeks = summarizePreviousWeeks(weekContent)
+              console.log(`✅ Week ${week} complete with ${workoutCount} workouts`)
+            } else {
+              console.warn(`⚠️ Week ${week} incomplete - only generated ${workoutCount}/${entityData.programSchedule.schedule.length} workouts`)
+              await new Promise(res => setTimeout(res, 1000))
             }
 
             // Summarize the current week's content

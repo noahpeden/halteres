@@ -97,7 +97,6 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
 
     setLoading(true)
     setGeneratedProgram('')
-    let accumulatedContent = ''
 
     try {
       const response = await fetch('https://vrmuakouskjbabedjhoc.supabase.co/functions/v1/generate-workout', {
@@ -138,32 +137,15 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
           if (line.startsWith('data: ')) {
             const content = line.slice(6).trim()
 
-            // Handle special cases first
-            if (content === '[DONE]') {
-              continue
-            }
+            if (content === '[DONE]') continue
 
             try {
               const data = JSON.parse(content)
-
-              if (data.type === 'progress') {
-                setCurrentWeek(data.week)
-                setTotalWeeks(data.totalWeeks)
-              } else if (data.type === 'workoutProgress') {
-                setWorkoutProgress({
-                  current: data.workout,
-                  total: data.totalWorkouts
-                })
-              } else if (data.type === 'content' && data.text) {
-                accumulatedContent += data.text
-                setGeneratedProgram(accumulatedContent)
-              } else if (data.choices?.[0]?.delta?.content) {
-                // Handle OpenAI streaming format
-                accumulatedContent += data.choices[0].delta.content
-                setGeneratedProgram(accumulatedContent)
+              if (data.type === 'content' && data.text) {
+                setGeneratedProgram((prev) => prev + data.text)
               }
             } catch (e) {
-              // Handle non-JSON content (like [DONE])
+              // Only log real errors, not [DONE] messages
               if (content && content !== '[DONE]') {
                 console.warn('Non-JSON content received:', content)
               }
@@ -172,7 +154,7 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
         }
       }
 
-      onProgramGenerated(accumulatedContent)
+      onProgramGenerated(generatedProgram)
     } catch (error) {
       console.error('Error generating program:', error)
       setGeneratedProgram('Error generating program. Please try again.')
@@ -201,18 +183,7 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
       </TouchableOpacity>
 
       <View className="min-h-[400px] mb-4">
-        {loading ? (
-          <View className="flex-1 justify-center items-center py-12">
-            <ActivityIndicator size="large" color="#FF7F50" />
-            <Text className="mt-4 text-gray-600 text-center">
-              {totalWeeks > 0
-                ? `Generating Week ${currentWeek} of ${totalWeeks}\nWorkout ${workoutProgress.current} of ${workoutProgress.total}`
-                : 'Starting program generation...'}
-            </Text>
-          </View>
-        ) : (
-          <WorkoutProgramDisplay programText={generatedProgram} onProgramChange={handleProgramChange} />
-        )}
+        <WorkoutProgramDisplay programText={generatedProgram} onProgramChange={handleProgramChange} />
       </View>
     </ScrollView>
   )

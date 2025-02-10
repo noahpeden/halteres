@@ -56,12 +56,6 @@ export default function Program() {
   const { supabase, user } = useAuth()
   const router = useRouter()
   const { entityId, programId } = useLocalSearchParams()
-  const [generationProgress, setGenerationProgress] = useState({
-    currentWeek: 0,
-    totalWeeks: 0,
-    currentWorkout: 0,
-    totalWorkouts: 0
-  })
 
   if (!entityId || !programId) {
     return (
@@ -237,19 +231,8 @@ export default function Program() {
           onProgramGenerated={(text) => setProgram((prev) => ({ ...prev, generatedProgram: text }))}
           initialProgram={program.generatedProgram}
           entityId={entityId as string}
-          onProgress={(progress) => setGenerationProgress(progress)}
         />
       </View>
-
-      {loading && (
-        <View className="absolute top-0 left-0 right-0 bg-orange-500 p-2">
-          <Text className="text-white text-center">
-            {generationProgress.currentWeek > 0
-              ? `Generating Week ${generationProgress.currentWeek}/${generationProgress.totalWeeks} - Workout ${generationProgress.currentWorkout}/${generationProgress.totalWorkouts}`
-              : 'Starting program generation...'}
-          </Text>
-        </View>
-      )}
 
       <View className="absolute bottom-0 left-0 right-0 bg-background border-t border-gray-200 p-4">
         <Button variant="primary" size="large" onPress={() => saveProgram(program.generatedProgram)}>
