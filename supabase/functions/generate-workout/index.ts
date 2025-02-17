@@ -12,6 +12,21 @@ export const corsHeaders = {
   'Connection': 'keep-alive'
 }
 
+export const handleCORS = (cb: (req: any) => Promise<Response>) => {
+  return async (req) => {
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders })
+    }
+
+    const response = await cb(req);
+    Object.entries(corsHeaders).forEach(([header, value]) => {
+      response.headers.set(header, value);
+    });
+
+    return response;
+  }
+};
+
 const formatValue = (value: any): string => {
   if (Array.isArray(value)) {
     return value.join(', ')
@@ -20,21 +35,6 @@ const formatValue = (value: any): string => {
     return value
   }
   return String(value || '')
-}
-
-function summarizePreviousWeeks(previousWeeks) {
-  const weeks = previousWeeks.split('--- End of Week ').filter(w => w.trim())
-  const summaries = weeks.map(weekContent => {
-    const weekNumberMatch = weekContent.match(/Week (\d+)/)
-    const focusMatch = weekContent.match(/Focus Areas:\s*(.*)/)
-    const workoutCount = (weekContent.match(/\[Day of Week\]/g) || []).length
-    const weekNumber = weekNumberMatch ? weekNumberMatch[1] : 'Unknown'
-    const focus = focusMatch ? focusMatch[1].split('\n')[0] : 'Various'
-    return `Week ${weekNumber}: ${workoutCount} workouts focusing on ${focus}.`
-  })
-  
-  // Only keep last week's full context
-  return summaries.slice(-1).join('\n')
 }
 
 async function fetchWithRetry(url, options, retries = 3, backoff = 3000) {
@@ -276,7 +276,125 @@ const countWorkouts = (content: string): number => {
   return dateHeaders.length
 }
 
-Deno.serve(async (req) => {
+const processWeeks = async (stream: TransformStream, entityData: Record<string, any>, similarWorkoutsContext: string) => {
+  const writer = stream.writable.getWriter()
+  const encoder = new TextEncoder()
+  
+  try {
+    const totalWeeks = entityData.programSchedule.duration_weeks
+    if (!totalWeeks || totalWeeks <= 0) {
+      throw new Error('Invalid duration_weeks specified')
+    }
+    
+    // Send initial message to confirm stream is working
+    await writer.write(encoder.encode(`data: {"type":"start"}\n\n`))
+    
+    console.log(`=== Starting Program Generation ===`)
+    console.log(`Total Weeks: ${totalWeeks}`)
+    console.log(`Workouts per Week: ${entityData.programSchedule.schedule.length}`)
+    console.log(`Schedule: ${entityData.programSchedule.schedule.join(', ')}`)
+    console.log(`Session Duration: ${entityData.programSchedule?.sessionDuration} minutes`)
+    
+    let previousWeeks = ''
+    
+    for (let week = 1; week <= totalWeeks; week++) {
+      try {
+        console.log(`\n=== Processing Week ${week}/${totalWeeks} ===`)
+        console.log(`Previous weeks context length: ${previousWeeks.length} characters`)
+        
+        await writer.write(encoder.encode(`data: {"type":"progress","week":${week},"totalWeeks":${totalWeeks}}\n\n`))
+        
+        let retryCount = 0
+        let weekComplete = false
+        let weekContent = ''
+
+        while (!weekComplete && retryCount < 3) {
+          try {
+            let workoutCount = 0
+            weekContent = ''
+            let lineBuffer = ''
+            
+            for await (const chunk of generateWorkoutWeek(
+              week,
+              totalWeeks,
+              entityData,
+              previousWeeks,
+              similarWorkoutsContext
+            )) {
+              if (chunk) {
+                weekContent += chunk
+                lineBuffer += chunk
+                
+                // Stream the content to the client immediately
+                await writer.write(encoder.encode(`data: {"type":"content","text":${JSON.stringify(chunk)}}\n\n`))
+                
+                // Count workouts based on complete content
+                const newWorkoutCount = countWorkouts(weekContent)
+                if (newWorkoutCount > workoutCount) {
+                  workoutCount = newWorkoutCount
+                  await writer.write(
+                    encoder.encode(
+                      `data: {"type":"workoutProgress","week":${week},"workout":${workoutCount},"totalWorkouts":${entityData.programSchedule.schedule.length}}\n\n`
+                    )
+                  )
+                  console.log(`Week ${week}: Generated workout ${workoutCount}/${entityData.programSchedule.schedule.length}`)
+                }
+              }
+            }
+
+            // Verify week completion
+            if (workoutCount === entityData.programSchedule.schedule.length) {
+              weekComplete = true
+              previousWeeks += `\n\nWEEK ${week}:\n${weekContent}\n--- End of Week ${week} ---\n`
+              console.log(`✅ Week ${week} complete with ${workoutCount} workouts`)
+            } else {
+              console.warn(`⚠️ Week ${week} incomplete - only generated ${workoutCount}/${entityData.programSchedule.schedule.length} workouts`)
+              retryCount++
+              await new Promise(res => setTimeout(res, 1000))
+            }
+          } catch (weekAttemptError) {
+            console.error(`❌ Attempt ${retryCount + 1} failed for week ${week}:`, weekAttemptError)
+            retryCount++
+          }
+        }
+
+        if (!weekComplete) {
+          throw new Error(`Failed to generate complete week ${week} after ${retryCount} attempts`)
+        }
+
+        // After processing each week
+        console.log(`Week ${week} completion status:`)
+        console.log(`- Generated workouts: ${countWorkouts(weekContent)}/${entityData.programSchedule.schedule.length}`)
+        console.log(`- Week content length: ${weekContent.length} characters`)
+        
+        await writer.write(encoder.encode(`data: {"type":"weekComplete","week":${week}}\n\n`))
+      } catch (weekError) {
+        console.error(`❌ Error in Week ${week}:`, weekError)
+        await writer.write(
+          encoder.encode(`data: {"type":"error","week":${week},"message":"${weekError.message}"}\n\n`)
+        )
+        throw weekError; // Re-throw to stop processing
+      }
+    }
+    
+    console.log(`\n=== Program Generation Complete ===`)
+    await writer.write(encoder.encode('data: {"type":"complete"}\n\n'))
+  } catch (error) {
+    console.error(`❌ Fatal error in program generation:`, error)
+    await writer.write(
+      encoder.encode(`data: {"type":"error","message":"${error.message}"}\n\n`)
+    )
+  } finally {
+    try {
+      await writer.write(encoder.encode('data: [DONE]\n\n'))
+      await writer.close()
+    } catch (e) {
+      console.error('Error closing writer:', e)
+    }
+  }
+}
+
+Deno.serve(handleCORS(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -381,131 +499,23 @@ Deno.serve(async (req) => {
 
     // Set up streaming response
     const stream = new TransformStream()
-    const writer = stream.writable.getWriter()
-    const encoder = new TextEncoder()
 
-    // Process weeks in the background
-    const processWeeks = async () => {
-      try {
-        const totalWeeks = entityData.programSchedule.duration_weeks
-        if (!totalWeeks || totalWeeks <= 0) {
-          throw new Error('Invalid duration_weeks specified')
-        }
-        
-        console.log(`=== Starting Program Generation ===`)
-        console.log(`Total Weeks: ${totalWeeks}`)
-        console.log(`Workouts per Week: ${entityData.programSchedule.schedule.length}`)
-        console.log(`Schedule: ${entityData.programSchedule.schedule.join(', ')}`)
-        console.log(`Session Duration: ${entityData.programSchedule?.sessionDuration} minutes`)
-        
-        let previousWeeks = ''
-        
-        for (let week = 1; week <= totalWeeks; week++) {
-          try {
-            console.log(`\n=== Processing Week ${week}/${totalWeeks} ===`)
-            console.log(`Previous weeks context length: ${previousWeeks.length} characters`)
-            
-            await writer.write(encoder.encode(`data: {"type":"progress","week":${week},"totalWeeks":${totalWeeks}}\n\n`))
-            
-            let retryCount = 0
-            let weekComplete = false
+    // Start processing in the background
+    processWeeks(stream, entityData, similarWorkoutsContext).catch(error => {
+      console.error('Process weeks error:', error)
+    })
 
-            while (!weekComplete && retryCount < 3) {
-              try {
-                let workoutCount = 0
-                let weekContent = ''
-                let lineBuffer = ''
-                
-                for await (const chunk of generateWorkoutWeek(
-                  week,
-                  totalWeeks,
-                  entityData,
-                  previousWeeks,
-                  similarWorkoutsContext
-                )) {
-                  if (chunk) {
-                    weekContent += chunk
-                    lineBuffer += chunk
-                    
-                    // Stream the content to the client immediately
-                    await writer.write(encoder.encode(`data: {"type":"content","text":${JSON.stringify(chunk)}}\n\n`))
-                    
-                    // Count workouts based on complete content
-                    const newWorkoutCount = countWorkouts(weekContent)
-                    if (newWorkoutCount > workoutCount) {
-                      workoutCount = newWorkoutCount
-                      await writer.write(
-                        encoder.encode(
-                          `data: {"type":"workoutProgress","week":${week},"workout":${workoutCount},"totalWorkouts":${entityData.programSchedule.schedule.length}}\n\n`
-                        )
-                      )
-                      console.log(`Week ${week}: Generated workout ${workoutCount}/${entityData.programSchedule.schedule.length}`)
-                    }
-                  }
-                }
-
-                // Verify week completion
-                if (workoutCount === entityData.programSchedule.schedule.length) {
-                  weekComplete = true
-                  previousWeeks = summarizePreviousWeeks(weekContent)
-                  console.log(`✅ Week ${week} complete with ${workoutCount} workouts`)
-                } else {
-                  console.warn(`⚠️ Week ${week} incomplete - only generated ${workoutCount}/${entityData.programSchedule.schedule.length} workouts`)
-                  retryCount++
-                  await new Promise(res => setTimeout(res, 1000))
-                }
-              } catch (weekAttemptError) {
-                console.error(`❌ Attempt ${retryCount + 1} failed for week ${week}:`, weekAttemptError)
-                retryCount++
-              }
-            }
-
-            if (!weekComplete) {
-              throw new Error(`Failed to generate complete week ${week} after ${retryCount} attempts`)
-            }
-
-            // Summarize the current week's content
-            const summarized = summarizePreviousWeeks(`--- Week ${week} ---\n${weekContent}\n--- End of Week ${week} ---`)
-            previousWeeks += `\n\nWEEK ${week}:\n${summarized}`
-            
-            await writer.write(encoder.encode(`data: \n--- End of Week ${week} ---\n\n`))
-            
-            // After processing each week
-            console.log(`Week ${week} completion status:`)
-            console.log(`- Generated workouts: ${workoutCount}/${entityData.programSchedule.schedule.length}`)
-            console.log(`- Week content length: ${weekContent.length} characters`)
-            
-            if (workoutCount < entityData.programSchedule.schedule.length) {
-              console.warn(`⚠️ Warning: Week ${week} incomplete - missing ${entityData.programSchedule.schedule.length - workoutCount} workouts`)
-            }
-          } catch (weekError) {
-            console.error(`❌ Error in Week ${week}:`, weekError)
-            await writer.write(
-              encoder.encode(`data: {"type":"error","week":${week},"message":"${weekError.message}"}\n\n`)
-            )
-          }
-        }
-        
-        console.log(`\n=== Program Generation Complete ===`)
-      } catch (error) {
-        console.error(`❌ Fatal error in program generation:`, error)
-        console.error(`Stack trace:`, error.stack)
-        await writer.write(
-          encoder.encode(`data: Fatal error generating workouts: ${error.message}\n\n`)
-        )
-      } finally {
-        await writer.write(encoder.encode('data: [DONE]\n\n'))
-        await writer.close()
-      }
-    }
-
-    processWeeks()
-
+    // Return the stream immediately
     return new Response(stream.readable, {
-      headers: corsHeaders
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      }
     })
   } catch (error) {
-    console.error('Full error details:', error)
+    console.error('Request handling error:', error)
     return new Response(
       JSON.stringify({
         error: 'There was an error processing your request',
@@ -520,4 +530,4 @@ Deno.serve(async (req) => {
       }
     )
   }
-})
+}))

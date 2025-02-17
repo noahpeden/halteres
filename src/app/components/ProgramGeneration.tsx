@@ -49,45 +49,6 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
     }
   }, [initialProgram])
 
-  const processStreamedContent = (text: string) => {
-    const lines = text.split('\n')
-    let accumulatedContent = ''
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const content = line.slice(6).trim()
-
-        // Handle week markers
-        if (content.match(/Week \d+ of \d+:/)) {
-          const match = content.match(/Week (\d+) of (\d+):/)
-          if (match) {
-            setCurrentWeek(parseInt(match[1]))
-            setTotalWeeks(parseInt(match[2]))
-          }
-          continue
-        }
-
-        // Handle [DONE] message
-        if (content === '[DONE]') {
-          continue
-        }
-
-        try {
-          // Try to parse as JSON first (for OpenAI streaming format)
-          const data = JSON.parse(content)
-          if (data.choices?.[0]?.delta?.content) {
-            accumulatedContent += data.choices[0].delta.content
-          }
-        } catch (e) {
-          // If not JSON, treat as raw content
-          accumulatedContent += content + '\n'
-        }
-      }
-    }
-
-    return accumulatedContent
-  }
-
   const generateProgram = async () => {
     if (!entityId) {
       console.error('Missing entity ID')
@@ -98,8 +59,10 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
     setLoading(true)
     setGeneratedProgram('')
     let accumulatedContent = ''
+    let hasReceivedData = false
 
     try {
+      console.log('Starting program generation request...')
       const response = await fetch('https://vrmuakouskjbabedjhoc.supabase.co/functions/v1/generate-workout', {
         method: 'POST',
         headers: {
@@ -121,61 +84,105 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
         })
       })
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-      if (!response.body) throw new Error('No response body')
+      console.log('Response received:', response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Response not OK:', errorText)
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+      }
+
+      if (!response.body) {
+        console.error('No response body received')
+        throw new Error('Server returned empty response')
+      }
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+      console.log('Starting to read stream...')
+      try {
+        let buffer = ''
+        let isDone = false
 
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
+        while (!isDone) {
+          const { done, value } = await reader.read()
+          isDone = done
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const content = line.slice(6).trim()
-
-            // Handle special cases first
-            if (content === '[DONE]') {
-              continue
+          if (done) {
+            console.log('Stream complete, hasReceivedData:', hasReceivedData)
+            if (!hasReceivedData) {
+              throw new Error('Stream ended without receiving any data')
             }
+            break
+          }
 
-            try {
-              const data = JSON.parse(content)
+          const chunk = decoder.decode(value)
+          console.log('Received chunk:', chunk.length, 'characters')
+          buffer += chunk
 
-              if (data.type === 'progress') {
-                setCurrentWeek(data.week)
-                setTotalWeeks(data.totalWeeks)
-              } else if (data.type === 'workoutProgress') {
-                setWorkoutProgress({
-                  current: data.workout,
-                  total: data.totalWorkouts
-                })
-              } else if (data.type === 'content' && data.text) {
-                accumulatedContent += data.text
-                setGeneratedProgram(accumulatedContent)
-              } else if (data.choices?.[0]?.delta?.content) {
-                // Handle OpenAI streaming format
-                accumulatedContent += data.choices[0].delta.content
-                setGeneratedProgram(accumulatedContent)
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              hasReceivedData = true
+              const content = line.slice(6).trim()
+
+              if (content === '[DONE]') {
+                console.log('Received [DONE] signal')
+                continue
               }
-            } catch (e) {
-              // Handle non-JSON content (like [DONE])
-              if (content && content !== '[DONE]') {
-                console.warn('Non-JSON content received:', content)
+
+              try {
+                const data = JSON.parse(content)
+                console.log('Parsed data type:', data.type)
+
+                if (data.type === 'error') {
+                  throw new Error(data.message)
+                }
+
+                if (data.type === 'start') {
+                  console.log('Stream started successfully')
+                } else if (data.type === 'progress') {
+                  setCurrentWeek(data.week)
+                  setTotalWeeks(data.totalWeeks)
+                } else if (data.type === 'workoutProgress') {
+                  setWorkoutProgress({
+                    current: data.workout,
+                    total: data.totalWorkouts
+                  })
+                } else if (data.type === 'content' && data.text) {
+                  accumulatedContent += data.text
+                  setGeneratedProgram(accumulatedContent)
+                }
+              } catch (e) {
+                console.warn('Error parsing content:', e)
+                // If it's not JSON, treat it as raw content
+                if (content && content !== '[DONE]') {
+                  accumulatedContent += content + '\n'
+                  setGeneratedProgram(accumulatedContent)
+                }
               }
             }
           }
         }
-      }
 
-      onProgramGenerated(accumulatedContent)
-    } catch (error) {
+        console.log('Stream processing complete')
+        if (accumulatedContent) {
+          console.log('Generated content length:', accumulatedContent.length)
+          onProgramGenerated(accumulatedContent)
+        } else {
+          throw new Error('No program content was generated')
+        }
+      } finally {
+        console.log('Releasing reader lock')
+        reader.releaseLock()
+      }
+    } catch (error: unknown) {
       console.error('Error generating program:', error)
-      setGeneratedProgram('Error generating program. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      setGeneratedProgram(`Error generating program: ${errorMessage}`)
     } finally {
       setLoading(false)
     }

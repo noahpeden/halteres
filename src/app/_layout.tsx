@@ -66,7 +66,7 @@ export default function AppLayout() {
       <AuthProvider>
         <Theme>
           <EntityProvider>
-            <View className="flex-1 bg-background overflow-auto">
+            <View className="flex-1 min-h-screen bg-background overflow-auto">
               <View className="flex-row px-4 py-2 justify-between items-center border-b border-[rgba(0,0,0,0)] w-[100%]">
                 <Link href="/" className="flex-shrink-0">
                   <View className="flex-row items-center gap-2">
