@@ -269,11 +269,12 @@ async function* generateWorkoutWeek(
   }
 }
 
-// Update the workout detection logic
+// Update the workout detection logic to be more precise
 const countWorkouts = (content: string): number => {
-  // Look for date headers in the format "Day - YYYY-MM-DD"
-  const dateHeaders = content.match(/[A-Za-z]+ - \d{4}-\d{2}-\d{2}/g) || []
-  return dateHeaders.length
+  // Look for complete workout sections that start with a day and date
+  const workoutPattern = /\[Day of Week\]/g
+  const matches = content.match(workoutPattern) || []
+  return matches.length
 }
 
 const processWeeks = async (stream: TransformStream, entityData: Record<string, any>, similarWorkoutsContext: string) => {
