@@ -73,26 +73,29 @@ const ProgramGeneration: React.FC<ProgramGenerationProps> = ({
 
     try {
       console.log('Starting program generation request...')
-      const response = await fetch('https://vrmuakouskjbabedjhoc.supabase.co/functions/v1/generate-workout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          entityData: {
-            ...programData,
-            gender: programData.clientMetrics.gender,
-            height_cm: programData.clientMetrics.height_cm,
-            weight_kg: programData.clientMetrics.weight_kg,
-            bench_1rm: programData.clientMetrics.bench_1rm,
-            squat_1rm: programData.clientMetrics.squat_1rm,
-            deadlift_1rm: programData.clientMetrics.deadlift_1rm,
-            mile_time: programData.clientMetrics.mile_time,
-            entity_id: entityId
-          }
-        })
-      })
+      const response = await fetch(
+        `${process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:54321' : 'https://vrmuakouskjbabedjhoc.supabase.co'}/functions/v1/generate-workout`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            entityData: {
+              ...programData,
+              gender: programData.clientMetrics.gender,
+              height_cm: programData.clientMetrics.height_cm,
+              weight_kg: programData.clientMetrics.weight_kg,
+              bench_1rm: programData.clientMetrics.bench_1rm,
+              squat_1rm: programData.clientMetrics.squat_1rm,
+              deadlift_1rm: programData.clientMetrics.deadlift_1rm,
+              mile_time: programData.clientMetrics.mile_time,
+              entity_id: entityId
+            }
+          })
+        }
+      )
 
       console.log('Response received:', response.status, response.statusText)
 

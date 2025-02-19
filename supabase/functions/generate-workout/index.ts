@@ -1,4 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { load } from "https://deno.land/std@0.204.0/dotenv/mod.ts"
+
+// Load .env file
+await load({ export: true })
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
@@ -103,7 +107,7 @@ PROGRAM DETAILS:
 
 INSTRUCTIONS:
 1. Generate exactly ${entityData.programSchedule.schedule.length} workouts for each week.
-2. Do NOT repeat any workout; every day’s session must be unique. Build upon previous weeks’ workouts, increasing intensity, complexity, or volume as appropriate.
+2. Do NOT repeat any workout; every day's session must be unique. Build upon previous weeks' workouts, increasing intensity, complexity, or volume as appropriate.
 3. Use the following exact format for each workout:
 
 [Day of Week] - [Date]
