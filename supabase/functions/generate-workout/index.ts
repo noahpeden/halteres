@@ -1,4 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { load } from "https://deno.land/std@0.204.0/dotenv/mod.ts"
+
+// Load .env file
+await load({ export: true })
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
@@ -18,14 +22,14 @@ export const handleCORS = (cb: (req: any) => Promise<Response>) => {
       return new Response('ok', { headers: corsHeaders })
     }
 
-    const response = await cb(req);
+    const response = await cb(req)
     Object.entries(corsHeaders).forEach(([header, value]) => {
-      response.headers.set(header, value);
-    });
+      response.headers.set(header, value)
+    })
 
-    return response;
+    return response
   }
-};
+}
 
 const formatValue = (value: any): string => {
   if (Array.isArray(value)) {
@@ -71,127 +75,73 @@ async function* generateWorkoutWeek(
   const weekEndDate = new Date(weekStartDate)
   weekEndDate.setDate(weekEndDate.getDate() + 6)
 
-  const workoutsPerWeek = entityData.programSchedule.schedule.length
-  const workoutDays = entityData.programSchedule.schedule
-
   const prompt = `
-    You are a professional fitness coach creating detailed, personalized workout programs based on the client's metrics, program overview, available equipment, restricted movements,and workout format.
-    You MUST generate EXACTLY ${workoutsPerWeek} workouts for this week (Week ${weekNumber}).
-    
-    STRICT OUTPUT REQUIREMENTS:
-    1. Generate exactly ${workoutsPerWeek} separate workouts
-    2. Each workout must be for one of these days: ${workoutDays.join(', ')}
-    3. Each workout must be complete with no placeholders or summaries
-    4. Each workout must follow the exact format specified below
-    5. Do not skip any days or combine workouts
+You are a professional fitness coach creating detailed, personalized workout programs for a client based on their metrics, equipment availability, any movement restrictions, and training goals. The program spans ${entityData.programSchedule.duration_weeks} weeks with ${entityData.programSchedule.schedule.length} workouts per week, and each workout must be completely unique. You must ensure that no workouts are repeated from week to week; instead, each week should build on the previous one through progression in load, movement variation, or pacing strategies.
 
-    CLIENT METRICS:
-    - Gender: ${entityData.clientMetrics.gender}
-    - Height: ${entityData.height_cm}cm
-    - Weight: ${entityData.weight_kg}kg
-    - Bench 1RM: ${entityData.bench_1rm}kg
-    - Squat 1RM: ${entityData.squat_1rm}kg
-    - Deadlift 1RM: ${entityData.deadlift_1rm}kg
-    - Mile Time: ${formatValue(entityData.mile_time)}
+CLIENT METRICS:
+- Gender: ${entityData.clientMetrics.gender}
+- Height: ${entityData.height_cm} cm
+- Weight: ${entityData.weight_kg} kg
+- Bench 1RM: ${entityData.bench_1rm} kg
+- Squat 1RM: ${entityData.squat_1rm} kg
+- Deadlift 1RM: ${entityData.deadlift_1rm} kg
+- Mile Time: ${formatValue(entityData.mile_time)}
 
-    MOVEMENT STANDARDS:
-    For each weighted movement, provide:
-    1. Exact weight based on client's 1RM percentages
-    2. RPE target (1-10 scale)
-    3. Rest periods
-    4. Movement progression/regression options
+MOVEMENT STANDARDS:
+For each weighted movement, provide:
+1. Exact weight based on client's 1RM percentages
+2. RPE target (scale 1–10)
+3. Rest periods
+4. Clear progression and regression options
 
-    Example format:
-    Dumbbell Bench Press
-    RX: 30kg (65% 1RM) @ RPE 7-8
-    Rest: 90s between sets
-    Progression: Increase weight by 2.5kg when RPE drops below 7
-    Regression: Reduce weight by 10% if unable to maintain form
+PROGRAM DETAILS:
+- Program Name: ${entityData.programOverview?.name || 'Unnamed Program'}
+- Program Description: ${entityData.programOverview?.description || 'No description provided'}
+- Training Styles: ${formatValue(entityData.workoutFormat?.format)}
+- Focus Areas: ${formatValue(entityData.workoutFormat?.focus)}
+- Equipment Available: ${entityData.gymDetails?.equipment || 'Standard Gym'}
+- Session Duration: ${entityData.programSchedule.sessionDuration} minutes per workout
+- Schedule Days: ${entityData.programSchedule.schedule.join(', ')}
+- Start Date: ${entityData.programSchedule.startDate}
+- End Date: ${entityData.programSchedule.endDate}
 
-    You are currently generating Week ${weekNumber} of ${totalWeeks}. Each workout should include clear RX and scaled options, with specific weights and RPE for both men and women. Consider the previous weeks' workouts for proper progression and variation.
-  `
+INSTRUCTIONS:
+1. Generate exactly ${entityData.programSchedule.schedule.length} workouts for each week.
+2. Do NOT repeat any workout; every day's session must be unique. Build upon previous weeks' workouts, increasing intensity, complexity, or volume as appropriate.
+3. Use the following exact format for each workout:
 
-  const userContent = `
-    STRICT PROGRAM REQUIREMENTS:
-    1. Week Number: ${weekNumber} of ${totalWeeks}
-    2. Exact Number of Workouts Needed: ${workoutsPerWeek}
-    3. Workout Days: ${workoutDays.join(', ')}
-    4. Week Date Range: ${weekStartDate.toISOString().split('T')[0]} to ${weekEndDate.toISOString().split('T')[0]}
-    5. Session Duration: ${entityData.programSchedule?.sessionDuration} minutes per workout
+[Day of Week] - [Date]
+[Workout Title]
 
-    PROGRAM DETAILS:
-    - Program Name: ${entityData.programOverview?.name || 'Unnamed Program'}
-    - Program Description: Generate a brief description and overview of the program focusing on how the program will focus on ${entityData.workoutFormat?.focus} and ${entityData.workoutFormat?.format}.
-    - Duration: ${totalWeeks} weeks with starting date: ${entityData.programSchedule?.startDate} and ending date: ${entityData.programSchedule?.endDate}
-    - Workouts per Week: ${entityData.programSchedule?.schedule.length}
-    
-    INSTRUCTIONS:
-    1. Generate Week ${weekNumber} of ${totalWeeks}. Current week dates: ${weekStartDate.toISOString().split('T')[0]} to ${weekEndDate.toISOString().split('T')[0]}
-    2. Each day must be written out completely, with no summarizing
-    3. Include date, title, focus areas, and ${entityData.workoutFormat?.instructions || 'a warmup, strength, metcon, and cooldown section with specific movements and sets/reps'}
-    4. Account for equipment availability, injuries, and skill levels
-    5. Each workout must follow this exact format:
+Focus Areas: [List the specific focus areas and a brief description of the workout]
 
-    [Day of Week] - [Date]
-    [Workout Title]
-    
-    Focus Areas: [List specific focus areas and brief description of the workout]
+Description: [A brief narrative on how this workout fits into the program progression]
 
-    Description: [Brief description]
+Coach's Notes:
+- Target: [Describe the intended stimulus and goal of the workout]
+- Strategy: [Include key cues for pacing, technique, and transition between movements]
+- Rx Weights: Based on ${entityData.clientMetrics.gender} metrics (Bench: ${entityData.bench_1rm}kg, Squat: ${entityData.squat_1rm}kg, Deadlift: ${entityData.deadlift_1rm}kg)
+- Scaling Options: [List clear scaling or regression options for movements]
 
-    
-    Coach's Notes:
-    - Target: [Brief description of intended stimulus and goal of workout]
-    - Strategy: [Key points for success and pacing guidance]
-    - Rx Weights: Based on ${entityData.clientMetrics.gender}'s metrics (Bench: ${entityData.bench_1rm}kg, Squat: ${entityData.squat_1rm}kg, DL: ${entityData.deadlift_1rm}kg)
-    - Scaling Options: [Movement substitutions and weight/rep modifications]
-    
-    Workout Breakdown (${entityData.programSchedule?.sessionDuration} min total):
-    
-    1. Warmup (${Math.round(entityData.programSchedule?.sessionDuration * 0.15)} min):
-    [Specific warmup movements and mobility work]
-    
-    2. Main Work (${Math.round(entityData.programSchedule?.sessionDuration * 0.7)} min):
-    [Detailed workout with movements, loads, sets/reps]
-    [Include RPE targets and rest periods]
-    
-    3. Cooldown (${Math.round(entityData.programSchedule?.sessionDuration * 0.15)} min):
-    [Specific cooldown and recovery work]
+Workout Breakdown (${entityData.programSchedule.sessionDuration} min total):
+1. Warmup (~${Math.round(entityData.programSchedule.sessionDuration * 0.15)} min): [List specific warmup movements and mobility work]
+2. Main Work (~${Math.round(entityData.programSchedule.sessionDuration * 0.7)} min): [Detailed workout including movements, sets/reps, loads (with RPE targets), and rest periods. Ensure a mix of strength and metabolic conditioning that evolves each week.]
+3. Cooldown (~${Math.round(entityData.programSchedule.sessionDuration * 0.15)} min): [List cooldown activities and stretching routines]
 
-    YOU MUST GENERATE ALL ${workoutsPerWeek} WORKOUTS FOR THIS WEEK BEFORE MOVING TO THE NEXT WEEK.
-    
-    Coaching cues:
-    [2-3 specific coaching points for key movements]
-    [Pacing guidance if applicable]
-    
-    PROGRAM REQUIREMENTS:
-    1. Training Styles: ${formatValue(entityData.workoutFormat?.format)}
-    2. Focus Areas: ${formatValue(entityData.workoutFormat?.focus)}
-    3. Workout Schedule: ${formatValue(entityData.programSchedule?.schedule)}
-    4. Session Duration: ${entityData.programSchedule?.sessionDuration} minutes
-    5. Program Instructions: ${entityData.workoutFormat?.instructions || 'None provided'}
-    6. Equipment Available: ${entityData.gymDetails?.equipment || 'Standard Gym'}
-    
-    MEDICAL CONSIDERATIONS:
-    ${entityData.workoutFormat?.quirks || 'None reported'}
-    
-    PREVIOUS WEEKS:
-    ${previousWeeks}
-    
-    SIMILAR WORKOUTS FOR REFERENCE:
-    ${similarWorkoutsContext}
-    
-    Create detailed workouts following the exact format above for Week ${weekNumber}, ensuring proper progression from previous weeks.
-  `
+MEDICAL CONSIDERATIONS:
+${entityData.workoutFormat?.quirks || 'None reported'}
 
-  // Log prompt size
-  console.log(`Prompt size (characters): ${prompt.length}`)
-  console.log(`User content size (characters): ${userContent.length}`)
-  
-  const promptTokenEstimate = Math.ceil(prompt.length / 4)
-  const userContentTokenEstimate = Math.ceil(userContent.length / 4)
-  console.log(`Estimated Prompt Tokens: ${promptTokenEstimate}`)
-  console.log(`Estimated User Content Tokens: ${userContentTokenEstimate}`)
+PREVIOUS WEEKS (if any):
+${previousWeeks}
+
+SIMILAR WORKOUTS FOR REFERENCE:
+${similarWorkoutsContext}
+
+NOTES:
+- The program is for Week X of ${entityData.programSchedule.duration_weeks}. Make sure the workouts for this week show progression over previous weeks.
+- Be creative with exercise selection, rep schemes, and pacing while staying true to the client's metrics and available equipment.
+- Use clear and detailed instructions with no placeholders or summaries. Each workout must be complete and self-contained.
+`
 
   const chatResponse = await fetchWithRetry('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -204,20 +154,15 @@ async function* generateWorkoutWeek(
       messages: [
         {
           role: 'developer',
-          content: 'Formatting re-enabled\n' + prompt  // Enable markdown formatting
-        },
-        {
-          role: 'user',
-          content: userContent
+          content: 'Formatting re-enabled\n' + prompt
         }
       ],
-      reasoning_effort: 'high',  // Since we want detailed, accurate workouts
+      reasoning_effort: 'high',
       stream: true,
-      store: true  // Enable storing for potential future reference
+      store: true
     })
   })
 
-  // Log response status
   console.log(`OpenAI Chat API response status: ${chatResponse.status}`)
 
   if (!chatResponse.ok) {
@@ -271,7 +216,7 @@ async function* generateWorkoutWeek(
 
 // Update the workout detection logic to be more precise
 const countWorkouts = (content: string): number => {
-  // Look for complete workout sections that start with a day and date
+  // Look for complete workout sections that start with a day and date marker
   const workoutPattern = /\[Day of Week\]/g
   const matches = content.match(workoutPattern) || []
   return matches.length
@@ -294,7 +239,7 @@ const processWeeks = async (stream: TransformStream, entityData: Record<string, 
     console.log(`Total Weeks: ${totalWeeks}`)
     console.log(`Workouts per Week: ${entityData.programSchedule.schedule.length}`)
     console.log(`Schedule: ${entityData.programSchedule.schedule.join(', ')}`)
-    console.log(`Session Duration: ${entityData.programSchedule?.sessionDuration} minutes`)
+    console.log(`Session Duration: ${entityData.programSchedule.sessionDuration} minutes`)
     
     let previousWeeks = ''
     
@@ -363,7 +308,6 @@ const processWeeks = async (stream: TransformStream, entityData: Record<string, 
           throw new Error(`Failed to generate complete week ${week} after ${retryCount} attempts`)
         }
 
-        // After processing each week
         console.log(`Week ${week} completion status:`)
         console.log(`- Generated workouts: ${countWorkouts(weekContent)}/${entityData.programSchedule.schedule.length}`)
         console.log(`- Week content length: ${weekContent.length} characters`)
@@ -374,7 +318,7 @@ const processWeeks = async (stream: TransformStream, entityData: Record<string, 
         await writer.write(
           encoder.encode(`data: {"type":"error","week":${week},"message":"${weekError.message}"}\n\n`)
         )
-        throw weekError; // Re-throw to stop processing
+        throw weekError
       }
     }
     
@@ -436,13 +380,11 @@ Deno.serve(handleCORS(async (req) => {
         value = value[key]
       }
       
-      // Additional validation for gender
       if (field === 'clientMetrics.gender' && !value) {
         throw new Error('Gender field cannot be empty')
       }
     }
 
-    // Get similar workouts context first
     const queryText = `
       Program: ${entityData.programOverview?.name || 'Unnamed Program'}
       Description: ${entityData.programOverview?.description || 'No description provided'}
@@ -451,7 +393,6 @@ Deno.serve(handleCORS(async (req) => {
       Equipment: ${entityData.gymDetails?.equipment || 'Standard Gym'}
     `.trim()
 
-    // Log query text size
     console.log(`Embedding query text size (characters): ${queryText.length}`)
     const embeddingTokenEstimate = Math.ceil(queryText.length / 4)
     console.log(`Estimated Embedding Tokens: ${embeddingTokenEstimate}`)
@@ -463,12 +404,11 @@ Deno.serve(handleCORS(async (req) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'text-embedding-ada-002', // Updated embedding model
+        model: 'text-embedding-ada-002',
         input: queryText
       })
     })
 
-    // Log embedding response status
     console.log(`OpenAI Embedding API response status: ${embeddingResponse.status}`)
 
     if (!embeddingResponse.ok) {
@@ -495,18 +435,14 @@ Deno.serve(handleCORS(async (req) => {
       ? similarWorkouts.map(workout => `${workout.title}:\n${workout.body}`).join('\n\n')
       : 'No similar workouts found for reference.'
 
-    // Log similar workouts context size
     console.log(`Similar workouts context size (characters): ${similarWorkoutsContext.length}`)
 
-    // Set up streaming response
     const stream = new TransformStream()
 
-    // Start processing in the background
     processWeeks(stream, entityData, similarWorkoutsContext).catch(error => {
       console.error('Process weeks error:', error)
     })
 
-    // Return the stream immediately
     return new Response(stream.readable, {
       headers: {
         ...corsHeaders,
